@@ -1,0 +1,50 @@
+.idea/**/aws.xml
+.idea/**/contentModel.xml
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/dataSources/
+.idea/**/dbnavigator.xml
+.idea/**/dictionaries
+.idea/**/dynamic.xml
+.idea/**/gradle.xml
+.idea/**/libraries
+.idea/**/shelf
+.idea/**/sqlDataSources.xml
+.idea/**/tasks.xml
+.idea/**/uiDesigner.xml
+.idea/**/usage.statistics.xml
+.idea/**/workspace.xml
+.idea/.name
+.idea/httpRequests
+.idea/misc.xml
+.idea/sonarlint/
+
+*.iws
+
+.PVS-Studio
+*.PVS-Studio*
+
+cmake-build-*/
+build/
+out/
+
+# ESP Component Library Components
+managed_components/
+
+# secrets — never commit credentials
+main/spiffs/wifi.txt
+main/spiffs/weather.txt
+config-export.*
+*.local.toml
+*.local.json
+secrets/
+
+# vendor assets — extracted from device, not redistributable
+nextube_assets/
+
+# macOS metadata
+.DS_Store
+
+# using sdkconfig.defaults instead
+sdkconfig
+sdkconfig.old
