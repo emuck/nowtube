@@ -1,0 +1,8 @@
+owm_key=your_openweathermap_api_key_here
+# Option A: city name (country code optional)
+# city=Seattle
+# city=San Leandro,US
+# Option B: latitude and longitude (takes precedence if both set)
+lat=37.731136
+lon=-122.134019
+units=imperial

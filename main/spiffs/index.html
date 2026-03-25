@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>nowtube</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <img src="/logo.png" class="hero-logo" alt="nowtube">
+      <h1>Device Configuration</h1>
+      <p class="lede">Local settings for Wi-Fi, weather, timezone, and display.</p>
+    </header>
+
+    <section class="panel">
+      <h2>Status</h2>
+      <div id="status" class="status-grid">
+        <div class="status-row">
+          <span class="status-label">—</span>
+          <span class="status-value">Loading…</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Configuration</h2>
+      <form id="config-form">
+
+        <div class="field-group">
+          <p class="field-group-title">Wi-Fi</p>
+          <div class="config-form">
+            <label>
+              <span>SSID</span>
+              <input id="wifi-ssid" name="wifi-ssid" type="text">
+            </label>
+            <label>
+              <span>Password</span>
+              <input id="wifi-psk" name="wifi-psk" type="password" placeholder="Leave blank to keep current">
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <p class="field-group-title">Weather</p>
+          <div class="config-form">
+            <div class="city-lookup">
+              <label>
+                <span>City lookup</span>
+                <input id="weather-city" name="weather-city" type="text" placeholder="e.g. San Francisco, CA">
+              </label>
+              <button id="city-lookup-btn" type="button" class="btn-secondary">Look up</button>
+              <p id="city-lookup-result" class="save-result"></p>
+            </div>
+            <label>
+              <span>Latitude</span>
+              <input id="weather-lat" name="weather-lat" type="number" step="any">
+            </label>
+            <label>
+              <span>Longitude</span>
+              <input id="weather-lon" name="weather-lon" type="number" step="any">
+            </label>
+            <label>
+              <span>Units</span>
+              <select id="weather-units" name="weather-units">
+                <option value="imperial">Imperial (°F, mph)</option>
+                <option value="metric">Metric (°C, km/h)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <p class="field-group-title">Display</p>
+          <div class="config-form">
+            <div class="tz-field">
+              <label>
+                <span>Timezone</span>
+                <select id="timezone-select">
+                  <optgroup label="United States">
+                    <option value="HST10">Hawaii</option>
+                    <option value="AKST9AKDT,M3.2.0,M11.1.0">Alaska</option>
+                    <option value="PST8PDT,M3.2.0,M11.1.0">Pacific</option>
+                    <option value="MST7MDT,M3.2.0,M11.1.0">Mountain</option>
+                    <option value="MST7">Arizona (no DST)</option>
+                    <option value="CST6CDT,M3.2.0,M11.1.0">Central</option>
+                    <option value="EST5EDT,M3.2.0,M11.1.0">Eastern</option>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="GMT0BST,M3.5.0/1,M10.5.0">UK / Ireland</option>
+                    <option value="CET-1CEST,M3.5.0,M10.5.0/3">Central Europe (Berlin, Paris, Rome…)</option>
+                    <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Eastern Europe (Helsinki, Kyiv…)</option>
+                    <option value="MSK-3">Moscow</option>
+                  </optgroup>
+                  <optgroup label="Asia / Pacific">
+                    <option value="IST-5:30">India</option>
+                    <option value="CST-8">China / Singapore / HK</option>
+                    <option value="JST-9">Japan / Korea</option>
+                    <option value="AEST-10AEDT,M10.1.0,M4.1.0/3">Australia Eastern (Sydney)</option>
+                    <option value="AWST-8">Australia Western (Perth)</option>
+                    <option value="NZST-12NZDT,M9.5.0,M4.1.0/3">New Zealand</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option value="UTC0">UTC</option>
+                    <option value="BRT3BRST,M10.3.0,M2.3.0">Brazil (Brasília)</option>
+                    <option value="custom">Custom POSIX string…</option>
+                  </optgroup>
+                </select>
+              </label>
+              <label id="timezone-custom-label" hidden>
+                <span>POSIX TZ string</span>
+                <input id="timezone" name="timezone" type="text" placeholder="e.g. PST8PDT,M3.2.0,M11.1.0">
+              </label>
+            </div>
+            <label>
+              <span>Clock Font</span>
+              <select id="clock-font" name="clock-font">
+                <option value="0">Nixie (default)</option>
+                <option value="1">Space Mono</option>
+              </select>
+            </label>
+            <label>
+              <span>Humidity panel</span>
+              <select id="panel-humidity-metric" name="panel-humidity-metric">
+                <option value="humidity">Humidity (default)</option>
+                <option value="aqi">Air Quality (US AQI)</option>
+              </select>
+            </label>
+            <label>
+              <span>Brightness</span>
+              <div class="range-wrap">
+                <input id="display-brightness" name="display-brightness" type="range" min="0" max="100">
+                <span id="display-brightness-val" class="range-val"></span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <p class="field-group-title">Ambient Cycling</p>
+          <p class="lede" style="margin-bottom:14px">Set dwell to 0 to skip a mode from the cycle.</p>
+          <div class="config-form">
+            <label>
+              <span>Clock dwell (s)</span>
+              <input id="cycle-clock-s" name="cycle-clock-s" type="number" min="5" max="300">
+            </label>
+            <label>
+              <span>Today dwell (s)</span>
+              <input id="cycle-today-s" name="cycle-today-s" type="number" min="0" max="300" placeholder="0 = skip">
+            </label>
+            <label>
+              <span>Forecast dwell (s)</span>
+              <input id="cycle-forecast-s" name="cycle-forecast-s" type="number" min="0" max="300" step="2" placeholder="0 = skip">
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="actions">
+            <button type="submit">Save Config</button>
+            <p id="save-result" class="save-result"></p>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>LED Backlight</h2>
+      <form id="backlight-form" class="config-form">
+        <label>
+          <span>Mode</span>
+          <select id="backlight-mode" name="backlight-mode">
+            <option value="normal">Normal</option>
+            <option value="breathable">Breathable</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </label>
+        <label>
+          <span>LED Color</span>
+          <select id="backlight-color" name="backlight-color">
+            <option value="warm orange">Warm Orange</option>
+            <option value="red">Red</option>
+            <option value="green">Green</option>
+            <option value="blue">Blue</option>
+            <option value="cyan">Cyan</option>
+            <option value="magenta">Magenta</option>
+            <option value="amber">Amber</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+        <div class="actions">
+          <button type="submit">Apply</button>
+          <p id="backlight-result" class="save-result"></p>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Actions</h2>
+      <div class="actions">
+        <button id="weather-refresh-btn" type="button" class="btn-secondary">Refresh Weather</button>
+        <button id="reboot-btn" type="button" class="btn-danger">Reboot Device</button>
+        <p id="action-result" class="save-result"></p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Firmware Update</h2>
+      <div class="ota-form" style="margin-top:16px">
+        <label>
+          <span>Firmware file</span>
+          <input id="ota-file" type="file" accept=".bin">
+        </label>
+        <div class="actions">
+          <button id="ota-file-btn" type="button">Flash Firmware</button>
+          <p id="ota-result" class="save-result"></p>
+        </div>
+        <div id="ota-progress-wrap" class="ota-progress-wrap" hidden>
+          <progress id="ota-progress" class="ota-progress" value="0" max="100"></progress>
+          <p id="ota-state-text" class="ota-state-text"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+name: Build
+
+on: [push]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: compile firmware with the real ESP-IDF toolchain.
+  # ---------------------------------------------------------------------------
+  firmware:
+    name: Firmware (ESP-IDF)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Build firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.3
+          target: esp32
+
+  # ---------------------------------------------------------------------------
+  # Job 2: build and run the host-side unit tests.
+  # No ESP-IDF toolchain needed; only a C++17 compiler and libcjson-dev.
+  # Runs in parallel with the firmware job.
+  # ---------------------------------------------------------------------------
+  host-tests:
+    name: Host tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install libcjson-dev
+        run: sudo apt-get install -y --no-install-recommends libcjson-dev
+
+      - name: Configure
+        run: cmake -S tests -B tests/build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build tests/build
+
+      - name: Run tests
+        run: ctest --test-dir tests/build --output-on-failure

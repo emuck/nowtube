@@ -1,0 +1,7 @@
+# Minimal config for i2s_probe — no PSRAM, no LVGL, just the ADC
+CONFIG_IDF_TARGET="esp32"
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# ADC continuous mode needs this
+CONFIG_ADC_CONTINUOUS_ISR_IRAM_SAFE=n
