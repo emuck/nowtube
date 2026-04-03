@@ -21,6 +21,17 @@ const std::vector<std::string> divider_loop = {"", ":"};
 static const lv_color_t TEXT_COLOR = lv_color_hex(0xFCF9D9);
 static const lv_color_t BG_COLOR = lv_color_hex(0x141414);
 
+static const char *condition_icon_src(uint16_t code) {
+  if (code == 0 || code == 1)                         return "S:/spiffs/sunny.png";
+  if (code == 2)                                      return "S:/spiffs/pcloudy.png";
+  if (code == 3)                                      return "S:/spiffs/cloudy.png";
+  if (code == 45 || code == 48)                       return "S:/spiffs/foggy.png";
+  if ((code >= 71 && code <= 77) ||
+      (code >= 85 && code <= 86))                     return "S:/spiffs/snowy.png";
+  if (code >= 95)                                     return "S:/spiffs/thunder.png";
+  return "S:/spiffs/rainy.png";
+}
+
 // Single 500ms timer: blink colon and check for next minute (keeps colon and time in sync)
 constexpr unsigned CLOCK_TICK_MS = 500;
 static constexpr size_t COLON_PANEL_INDEX = 2;  // display 2 = third panel (HH : MM)
@@ -55,6 +66,14 @@ clock::clock() {
       lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
       digit_images[i] = label;
       lv_obj_align(label, LV_ALIGN_CENTER, 0, -7);
+
+      if (i == 0) {
+        // Panel 0: weather icon shown in place of '0' (hours 1–9 in 12-hour format)
+        weather_icon_ = lv_img_create(screen);
+        lv_img_set_src(weather_icon_, condition_icon_src(weather_code_));
+        lv_obj_align(weather_icon_, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+      }
     } else {
       ampm_image = lv_label_create(screen);
       lv_obj_set_style_text_font(ampm_image, theme.ampm, 0);
@@ -118,6 +137,7 @@ void clock::update() {
       char text[2] = {*p++, '\0'};
       lv_label_set_text(digit_images[j], text);
     }
+    apply_panel0_icon(strftime_buf[0] == '0');
     char ampm_buf[3] = {*p, 'M', '\0'};
     lv_label_set_text(ampm_image, ampm_buf);
     lv_obj_align(ampm_image, LV_ALIGN_TOP_MID, 0, 13);
@@ -137,6 +157,7 @@ void clock::update() {
     if (digit != '\0') next_digit++;
     animate_panel(i, std::string(text), delay);
   }
+  apply_panel0_icon(strftime_buf[0] == '0');
 
   char ampm_char = *next_digit;
   char *existing_ampm = lv_label_get_text(ampm_image);
@@ -266,6 +287,24 @@ void clock::show_date() {
   show_value(buf);
 }
 
+void clock::apply_panel0_icon(bool show_icon) {
+  panel0_showing_icon_ = show_icon && (weather_icon_ != nullptr);
+  if (panel0_showing_icon_) {
+    lv_obj_add_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_clear_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
+    if (weather_icon_) lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
+void clock::set_weather_condition(uint16_t code) {
+  weather_code_ = code;
+  if (weather_icon_) {
+    lv_img_set_src(weather_icon_, condition_icon_src(code));
+  }
+}
+
 void clock::hide_all() {
   lv_timer_pause(clock_update_timer);
   for (int i = 0; i < NUM_LCDS - 1; i++) {
@@ -273,6 +312,7 @@ void clock::hide_all() {
   }
   lv_obj_add_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_add_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
+  if (weather_icon_) lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
 }
 
 void clock::restore_all() {
@@ -281,6 +321,11 @@ void clock::restore_all() {
   }
   lv_obj_clear_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_clear_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
+  // Re-apply panel 0 icon state (loop above unconditionally unhid digit_images[0])
+  if (panel0_showing_icon_ && weather_icon_) {
+    lv_obj_add_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+  }
   lv_timer_resume(clock_update_timer);
 }
 
@@ -369,6 +414,7 @@ clock::~clock() {
 
   lv_obj_del(ampm_image);
   if (temp_label) lv_obj_del(temp_label);
+  if (weather_icon_) lv_obj_del(weather_icon_);
 
   for (auto *img : digit_images) {
     lv_obj_del(img);
