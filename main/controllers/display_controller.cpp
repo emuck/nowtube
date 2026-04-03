@@ -182,8 +182,9 @@ void on_conditions_updated(const current_conditions &data) {
   conditions_unlock();
 
   gui_lvgl_lock();
-  // Always keep the clock's temperature label current.
+  // Always keep the clock's temperature label and weather icon current.
   clock::get().set_temp(data.temp_value, data.temp_unit);
+  clock::get().set_weather_condition(data.weather_code);
   // Also refresh TODAY if it is the active mode.
   if (ModeManager::get().current() == DisplayMode::TODAY) {
     today_display::show(data);
