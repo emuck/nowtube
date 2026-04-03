@@ -28,7 +28,8 @@ public:
   void show_date();
   void set_temp(const char *value, const char *unit);        // animated update (after first render)
   void set_temp_static(const char *value);                   // quiet set (safe before first render)
-  void set_weather_condition(uint16_t code);                 // update icon shown on panel 0 when first digit is '0'
+  void set_weather_condition(uint16_t code);                 // update weather icon source for panel 0
+  void set_sun_times(uint16_t sunrise_min, uint16_t sunset_min); // minutes-since-midnight from conditions
   void clock_tick();   // 500ms: blink colon + run update() at minute boundary (called from LVGL timer)
 
   // Pause the clock tick timer and hide all clock LVGL objects.
@@ -62,9 +63,15 @@ private:
   std::array<lv_timer_t *, NUM_LCDS-1> delayed_start_timers{};
   lv_obj_t *ampm_image{};
   lv_obj_t *temp_label{};
-  lv_obj_t *weather_icon_{};        // weather condition icon shown on panel 0 instead of '0'
-  uint16_t  weather_code_{0};       // last received WMO weather code
-  bool      panel0_showing_icon_{}; // true when icon is visible on panel 0
+  lv_obj_t *weather_icon_{};    // weather condition icon, panel 0
+  lv_obj_t *moon_canvas_{};    // dynamically rendered moon, panel 0 (shown at night)
+  void     *moon_canvas_buf_{}; // PSRAM backing buffer for moon_canvas_
+  uint16_t  weather_code_{0};
+  uint16_t  sunrise_min_{0};   // minutes since midnight (from conditions)
+  uint16_t  sunset_min_{0};
+  float     last_moon_phase_{-1.0f}; // phase at last render, -1 = never rendered
+  enum class Panel0Mode { DIGIT, WEATHER_ICON, MOON };
+  Panel0Mode panel0_mode_{Panel0Mode::DIGIT};
   lv_timer_t *clock_update_timer{};
   time_t next_update_time_{0};  // next minute boundary (for single 500ms timer)
   bool initialized_{false};
@@ -72,5 +79,9 @@ private:
   void delayed_start_flap_sequence(size_t index);
   void animate_panel(size_t i, const std::string &desired, uint32_t &delay);
   void colon_blink_tick();
-  void apply_panel0_icon(bool show_icon);  // show weather icon / restore digit on panel 0
+  void update_panel0(bool first_is_zero);         // pick DIGIT / WEATHER_ICON / MOON for panel 0
+  void set_panel0_mode(Panel0Mode mode);          // apply visibility for the chosen mode
+  void render_moon_to_canvas(float phase);        // draw moon PNG + shadow into moon_canvas_
+  bool is_nighttime() const;                      // true between sunset_min_ and sunrise_min_
+  static float current_moon_phase(time_t now);   // 0.0=new … 0.5=full … 1.0=new
 };

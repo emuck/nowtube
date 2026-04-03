@@ -3,12 +3,19 @@
 
 #include "clock.h"
 #include <lvgl.h>
+#include <cmath>
 #include <ctime>
+#include <esp_heap_caps.h>
 
 #include "drivers/lcds.h"
 #include "font_theme.h"
 #include "gui.h"
 #include "services/config_service.h"
+
+static constexpr int   MOON_SIZE     = 70;
+static constexpr float MOON_RADIUS   = MOON_SIZE / 2.0f;
+// LV_IMG_CF_TRUE_COLOR_ALPHA = RGB565 (2 bytes) + Alpha (1 byte) per pixel
+static constexpr size_t MOON_BUF_BYTES = MOON_SIZE * MOON_SIZE * 3;
 
 constexpr auto FLIP_SPACING_MS = 700;
 // Set to true to always update clock digits/AM-PM instantly (no flapper). Use until display is solid.
@@ -68,11 +75,22 @@ clock::clock() {
       lv_obj_align(label, LV_ALIGN_CENTER, 0, -7);
 
       if (i == 0) {
-        // Panel 0: weather icon shown in place of '0' (hours 1–9 in 12-hour format)
+        // Weather icon: shown on panel 0 during daytime when first digit is '0'
         weather_icon_ = lv_img_create(screen);
         lv_img_set_src(weather_icon_, condition_icon_src(weather_code_));
         lv_obj_align(weather_icon_, LV_ALIGN_CENTER, 0, 0);
         lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+
+        // Moon canvas: shown on panel 0 at night when first digit is '0'
+        moon_canvas_buf_ = heap_caps_malloc(MOON_BUF_BYTES,
+                                            MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (moon_canvas_buf_) {
+          moon_canvas_ = lv_canvas_create(screen);
+          lv_canvas_set_buffer(moon_canvas_, moon_canvas_buf_,
+                               MOON_SIZE, MOON_SIZE, LV_IMG_CF_TRUE_COLOR_ALPHA);
+          lv_obj_align(moon_canvas_, LV_ALIGN_CENTER, 0, 0);
+          lv_obj_add_flag(moon_canvas_, LV_OBJ_FLAG_HIDDEN);
+        }
       }
     } else {
       ampm_image = lv_label_create(screen);
@@ -137,7 +155,7 @@ void clock::update() {
       char text[2] = {*p++, '\0'};
       lv_label_set_text(digit_images[j], text);
     }
-    apply_panel0_icon(strftime_buf[0] == '0');
+    update_panel0(strftime_buf[0] == '0');
     char ampm_buf[3] = {*p, 'M', '\0'};
     lv_label_set_text(ampm_image, ampm_buf);
     lv_obj_align(ampm_image, LV_ALIGN_TOP_MID, 0, 13);
@@ -157,7 +175,7 @@ void clock::update() {
     if (digit != '\0') next_digit++;
     animate_panel(i, std::string(text), delay);
   }
-  apply_panel0_icon(strftime_buf[0] == '0');
+  update_panel0(strftime_buf[0] == '0');
 
   char ampm_char = *next_digit;
   char *existing_ampm = lv_label_get_text(ampm_image);
@@ -287,14 +305,103 @@ void clock::show_date() {
   show_value(buf);
 }
 
-void clock::apply_panel0_icon(bool show_icon) {
-  panel0_showing_icon_ = show_icon && (weather_icon_ != nullptr);
-  if (panel0_showing_icon_) {
-    lv_obj_add_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
-  } else {
+// ---------------------------------------------------------------------------
+// Panel 0 mode management
+
+float clock::current_moon_phase(time_t now) {
+  // Reference new moon: Jan 6, 2000 18:14 UTC  (unix timestamp 947182440)
+  constexpr double KNOWN_NEW_MOON  = 947182440.0;
+  constexpr double SYNODIC_PERIOD  = 29.530588853 * 86400.0; // seconds
+  double age = fmod((double)now - KNOWN_NEW_MOON, SYNODIC_PERIOD);
+  if (age < 0) age += SYNODIC_PERIOD;
+  return (float)(age / SYNODIC_PERIOD); // 0.0 = new moon, 0.5 = full moon
+}
+
+bool clock::is_nighttime() const {
+  if (sunrise_min_ == 0 && sunset_min_ == 0) return false; // not yet received
+  time_t now = time(nullptr);
+  struct tm t{};
+  localtime_r(&now, &t);
+  uint16_t now_min = (uint16_t)(t.tm_hour * 60 + t.tm_min);
+  return (now_min < sunrise_min_ || now_min >= sunset_min_);
+}
+
+void clock::render_moon_to_canvas(float phase) {
+  if (!moon_canvas_ || !moon_canvas_buf_) return;
+
+  // Clear canvas to transparent
+  memset(moon_canvas_buf_, 0, MOON_BUF_BYTES);
+
+  // Draw the full-moon PNG onto the canvas
+  lv_draw_img_dsc_t img_dsc;
+  lv_draw_img_dsc_init(&img_dsc);
+  lv_canvas_draw_img(moon_canvas_, 0, 0, "S:/spiffs/moon.png", &img_dsc);
+
+  // Paint shadow pixels using the terminator formula:
+  //   b = cos(phase × 2π)
+  //   lit  = (phase ≤ 0.5) ? dx ≥ b×√(1−dy²)
+  //        :                  dx ≤ −b×√(1−dy²)
+  const float b = cosf(phase * 2.0f * (float)M_PI);
+  const lv_color_t shadow = lv_color_make(10, 10, 20); // deep-blue shadow
+
+  for (int py = 0; py < MOON_SIZE; py++) {
+    const float dy = (py - MOON_RADIUS) / MOON_RADIUS;
+    const float dy2 = dy * dy;
+    if (dy2 > 1.0f) continue;
+    const float limit = sqrtf(1.0f - dy2);
+
+    for (int px = 0; px < MOON_SIZE; px++) {
+      const float dx = (px - MOON_RADIUS) / MOON_RADIUS;
+      if (dx * dx + dy2 > 1.0f) continue; // outside moon disc
+
+      const bool lit = (phase <= 0.5f) ? (dx >= b * limit) : (dx <= -b * limit);
+      if (!lit) lv_canvas_set_px_color(moon_canvas_, px, py, shadow);
+    }
+  }
+
+  last_moon_phase_ = phase;
+}
+
+void clock::set_panel0_mode(Panel0Mode mode) {
+  panel0_mode_ = mode;
+  // digit_images[0] visible only in DIGIT mode
+  if (mode == Panel0Mode::DIGIT) {
     lv_obj_clear_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
-    if (weather_icon_) lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
+  }
+  // weather icon visible only in WEATHER_ICON mode
+  if (weather_icon_) {
+    if (mode == Panel0Mode::WEATHER_ICON) {
+      lv_obj_clear_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+  // moon canvas visible only in MOON mode
+  if (moon_canvas_) {
+    if (mode == Panel0Mode::MOON) {
+      lv_obj_clear_flag(moon_canvas_, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(moon_canvas_, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+}
+
+void clock::update_panel0(bool first_is_zero) {
+  if (!first_is_zero) {
+    set_panel0_mode(Panel0Mode::DIGIT);
+    return;
+  }
+  if (is_nighttime() && moon_canvas_) {
+    float phase = current_moon_phase(time(nullptr));
+    // Re-render when phase has drifted more than ~3 hours since last render
+    if (last_moon_phase_ < 0.0f || fabsf(phase - last_moon_phase_) > 0.005f) {
+      render_moon_to_canvas(phase);
+    }
+    set_panel0_mode(Panel0Mode::MOON);
+  } else {
+    set_panel0_mode(Panel0Mode::WEATHER_ICON);
   }
 }
 
@@ -305,6 +412,11 @@ void clock::set_weather_condition(uint16_t code) {
   }
 }
 
+void clock::set_sun_times(uint16_t sunrise_min, uint16_t sunset_min) {
+  sunrise_min_ = sunrise_min;
+  sunset_min_  = sunset_min;
+}
+
 void clock::hide_all() {
   lv_timer_pause(clock_update_timer);
   for (int i = 0; i < NUM_LCDS - 1; i++) {
@@ -313,6 +425,7 @@ void clock::hide_all() {
   lv_obj_add_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_add_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
   if (weather_icon_) lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+  if (moon_canvas_)  lv_obj_add_flag(moon_canvas_,  LV_OBJ_FLAG_HIDDEN);
 }
 
 void clock::restore_all() {
@@ -321,11 +434,8 @@ void clock::restore_all() {
   }
   lv_obj_clear_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_clear_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
-  // Re-apply panel 0 icon state (loop above unconditionally unhid digit_images[0])
-  if (panel0_showing_icon_ && weather_icon_) {
-    lv_obj_add_flag(digit_images[0], LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
-  }
+  // Re-apply panel 0 mode (loop above unconditionally unhid digit_images[0])
+  set_panel0_mode(panel0_mode_);
   lv_timer_resume(clock_update_timer);
 }
 
@@ -413,8 +523,10 @@ clock::~clock() {
   }
 
   lv_obj_del(ampm_image);
-  if (temp_label) lv_obj_del(temp_label);
+  if (temp_label)    lv_obj_del(temp_label);
   if (weather_icon_) lv_obj_del(weather_icon_);
+  if (moon_canvas_)  lv_obj_del(moon_canvas_);
+  if (moon_canvas_buf_) { heap_caps_free(moon_canvas_buf_); moon_canvas_buf_ = nullptr; }
 
   for (auto *img : digit_images) {
     lv_obj_del(img);
