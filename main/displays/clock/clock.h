@@ -30,6 +30,7 @@ public:
   void set_temp_static(const char *value);                   // quiet set (safe before first render)
   void set_weather_condition(uint16_t code);                 // update weather icon source for panel 0
   void set_sun_times(uint16_t sunrise_min, uint16_t sunset_min); // minutes-since-midnight from conditions
+  void show_moon_test();                                     // render 6 phases across all panels (debug)
   void clock_tick();   // 500ms: blink colon + run update() at minute boundary (called from LVGL timer)
 
   // Pause the clock tick timer and hide all clock LVGL objects.
