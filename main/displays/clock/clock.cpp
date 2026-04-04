@@ -17,6 +17,9 @@ static constexpr float MOON_RADIUS   = MOON_SIZE / 2.0f;
 // LV_IMG_CF_TRUE_COLOR_ALPHA = RGB565 (2 bytes) + Alpha (1 byte) per pixel
 static constexpr size_t MOON_BUF_BYTES = MOON_SIZE * MOON_SIZE * 3;
 
+// Set true to render a phase test across all 6 panels at boot (debug only)
+static constexpr bool MOON_TEST_MODE = false;
+
 constexpr auto FLIP_SPACING_MS = 700;
 // Set to true to always update clock digits/AM-PM instantly (no flapper). Use until display is solid.
 static constexpr bool CLOCK_INSTANT_UPDATE = true;
@@ -114,6 +117,8 @@ clock::clock() {
 
   clock_update_timer = lv_timer_create(clock_tick_callback, CLOCK_TICK_MS, this);
   lv_timer_set_repeat_count(clock_update_timer, -1);
+
+  if (MOON_TEST_MODE) show_moon_test();
 }
 
 void clock::clock_tick() {
@@ -415,6 +420,58 @@ void clock::set_weather_condition(uint16_t code) {
 void clock::set_sun_times(uint16_t sunrise_min, uint16_t sunset_min) {
   sunrise_min_ = sunrise_min;
   sunset_min_  = sunset_min;
+}
+
+void clock::show_moon_test() {
+  static constexpr float phases[NUM_LCDS] = {
+      0.0f,    // new moon
+      0.125f,  // waxing crescent
+      0.25f,   // first quarter
+      0.5f,    // full moon
+      0.625f,  // waning gibbous
+      0.75f,   // last quarter
+  };
+  lv_timer_pause(clock_update_timer);
+
+  for (int i = 0; i < NUM_LCDS; i++) {
+    // Allocate a PSRAM canvas buffer for this panel
+    void *buf = heap_caps_malloc(MOON_BUF_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!buf) continue;
+
+    lv_disp_set_default(gui_get_display(i));
+    lv_obj_t *screen = lv_scr_act();
+
+    // Dark background
+    lv_obj_set_style_bg_color(screen, BG_COLOR, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
+
+    lv_obj_t *canvas = lv_canvas_create(screen);
+    lv_canvas_set_buffer(canvas, buf, MOON_SIZE, MOON_SIZE, LV_IMG_CF_TRUE_COLOR_ALPHA);
+    lv_obj_align(canvas, LV_ALIGN_CENTER, 0, 0);
+
+    // Clear to transparent, draw moon PNG, apply shadow
+    memset(buf, 0, MOON_BUF_BYTES);
+    lv_draw_img_dsc_t img_dsc;
+    lv_draw_img_dsc_init(&img_dsc);
+    lv_canvas_draw_img(canvas, 0, 0, "S:/spiffs/moon.png", &img_dsc);
+
+    const float phase = phases[i];
+    const float b     = cosf(phase * 2.0f * (float)M_PI);
+    const lv_color_t shadow = lv_color_make(10, 10, 20);
+
+    for (int py = 0; py < MOON_SIZE; py++) {
+      const float dy    = (py - MOON_RADIUS) / MOON_RADIUS;
+      const float dy2   = dy * dy;
+      if (dy2 > 1.0f) continue;
+      const float limit = sqrtf(1.0f - dy2);
+      for (int px = 0; px < MOON_SIZE; px++) {
+        const float dx = (px - MOON_RADIUS) / MOON_RADIUS;
+        if (dx * dx + dy2 > 1.0f) continue;
+        const bool lit = (phase <= 0.5f) ? (dx >= b * limit) : (dx <= -b * limit);
+        if (!lit) lv_canvas_set_px_color(canvas, px, py, shadow);
+      }
+    }
+  }
 }
 
 void clock::hide_all() {
