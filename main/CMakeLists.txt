@@ -22,6 +22,7 @@ idf_component_register(
         "fonts/nixie_60.c"
         "fonts/nixie_temp.c"
         "fonts/space_mono_44.c"
+        "fonts/space_mono_54.c"
         "fonts/space_mono_120.c"
         "fonts/space_mono_60.c"
         "fonts/space_mono_48.c"

@@ -15,6 +15,7 @@
 #include "weather_parser.h"
 
 LV_FONT_DECLARE(space_mono_44)
+LV_FONT_DECLARE(space_mono_54)
 
 namespace today_display {
 
@@ -103,7 +104,7 @@ static lv_obj_t *make_stacked(int panel, const char *text) {
     lv_disp_set_default(gui_get_display(panel));
     lv_obj_t *label = lv_label_create(lv_scr_act());
     lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_style_text_font(label, &space_mono_44, 0);
+    lv_obj_set_style_text_font(label, &space_mono_54, 0);
     lv_obj_set_style_text_color(label, TEXT_COLOR, 0);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(label, LCD_WIDTH + 2);
@@ -258,7 +259,7 @@ void show(const current_conditions &data) {
             lv_disp_set_default(gui_get_display(i));
             s_condition_icon = lv_img_create(lv_scr_act());
             lv_img_set_src(s_condition_icon, condition_icon_src(data.weather_code));
-            lv_obj_align(s_condition_icon, LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_align(s_condition_icon, LV_ALIGN_TOP_MID, 0, 0);
             s_lbl[i] = make_bottom(i, buf);
             lv_obj_align(s_lbl[i], LV_ALIGN_BOTTOM_MID, 0, -31);
         } else if (i == 3) {
@@ -266,14 +267,14 @@ void show(const current_conditions &data) {
             lv_disp_set_default(gui_get_display(i));
             s_wind_icon = lv_img_create(lv_scr_act());
             lv_img_set_src(s_wind_icon, "S:/spiffs/wind.png");
-            lv_obj_align(s_wind_icon, LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_align(s_wind_icon, LV_ALIGN_TOP_MID, 0, 0);
             s_lbl[i] = make_bottom(i, buf);
         } else if (i == 4) {
             // Humidity / AQI panel: icon at top, text at bottom.
             lv_disp_set_default(gui_get_display(i));
             s_drop_icon = lv_img_create(lv_scr_act());
             lv_img_set_src(s_drop_icon, use_aqi ? "S:/spiffs/air.png" : "S:/spiffs/drop.png");
-            lv_obj_align(s_drop_icon, LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_align(s_drop_icon, LV_ALIGN_TOP_MID, 0, 0);
             s_lbl[i] = make_bottom(i, buf);
             lv_label_set_recolor(s_lbl[i], true);  // enables #RRGGBB text# coloring
         } else if (i == 5) {
@@ -281,7 +282,7 @@ void show(const current_conditions &data) {
             lv_disp_set_default(gui_get_display(i));
             s_sunset_icon = lv_img_create(lv_scr_act());
             lv_img_set_src(s_sunset_icon, "S:/spiffs/sunset.png");
-            lv_obj_align(s_sunset_icon, LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_align(s_sunset_icon, LV_ALIGN_TOP_MID, 0, 0);
             s_lbl[i] = make_bottom(i, buf);
         } else {
             s_lbl[i] = make_stacked(i, buf);
