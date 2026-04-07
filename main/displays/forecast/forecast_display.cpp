@@ -178,7 +178,7 @@ void show(const forecast_data &data) {
             lv_disp_set_default(gui_get_display(0));
             s_forecast_icon = lv_img_create(lv_scr_act());
             lv_img_set_src(s_forecast_icon, "S:/spiffs/forecast.png");
-            lv_obj_align(s_forecast_icon, LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_align(s_forecast_icon, LV_ALIGN_TOP_MID, 0, 0);
             s_day_lbl[0] = make_row(0, day, COLOR_DAY,  ROW_DAY_Y);  // empty, guards clear()
             s_hi_lbl[0]  = make_row(0, hi,  COLOR_HIGH, ROW_KEY_HI_Y);
             s_lo_lbl[0]  = make_row(0, lo,  COLOR_LOW,  ROW_KEY_LO_Y);
@@ -190,7 +190,7 @@ void show(const forecast_data &data) {
             // Condition icon: created hidden; shown by phase timer.
             lv_disp_set_default(gui_get_display(i));
             s_cond_icon[i] = lv_img_create(lv_scr_act());
-            lv_obj_align(s_cond_icon[i], LV_ALIGN_TOP_MID, 0, 2);
+            lv_obj_align(s_cond_icon[i], LV_ALIGN_TOP_MID, 0, 0);
             lv_obj_add_flag(s_cond_icon[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
