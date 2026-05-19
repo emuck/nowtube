@@ -58,6 +58,33 @@ The tool prints the exact lines you need to add to three files:
 
 Then `idf.py build` and the font is live.
 
+---
+
+## upload_spiffs_assets.py — Wi-Fi SPIFFS asset uploader
+
+Uploads the releasable SPIFFS files from `main/spiffs/` directly to a running
+device over `POST /api/spiffs/upload`, so you can update icons and web assets
+without USB.
+
+### Usage
+
+```bash
+# Upload the full release asset set
+python3 tools/upload_spiffs_assets.py 192.168.88.25
+
+# Preview the files first
+python3 tools/upload_spiffs_assets.py nowtube.local --dry-run
+
+# Upload only a subset
+python3 tools/upload_spiffs_assets.py 192.168.88.25 --only moon.png app.js app.css index.html
+```
+
+### Notes
+
+- Uploads only `.png`, `.html`, `.js`, and `.css` files.
+- Skips bootstrap/sample files like `wifi.sample.txt` and `weather.sample.txt`.
+- The device must already be reachable on your local network.
+
 ### Recommended fonts
 
 | Font | Style | Best for |

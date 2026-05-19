@@ -31,6 +31,7 @@
 #include "services/config_service.h"
 #include "services/diagnostics_service.h"
 #include "services/status_service.h"
+#include "build_info.h"
 #include "version.h"
 #include "weather_service.h"
 #include "webserver.h"
@@ -215,7 +216,10 @@ static void on_wifi_recovery_toggle() {
 static void status_handler(char *buffer, size_t buffer_size) {
   status_snapshot snap = status_service::get_snapshot();
   snprintf(buffer, buffer_size,
-           "{\"status\":\"ok\",\"firmware\":\"%s\",\"uptime_s\":%lu,"
+           "{\"status\":\"ok\",\"firmware\":\"%s\","
+           "\"build\":{\"version\":\"%s\",\"git_sha\":\"%s\","
+           "\"git_dirty\":%s,\"build_time_utc\":\"%s\",\"asset_rev\":\"%s\"},"
+           "\"uptime_s\":%lu,"
            "\"wifi\":{\"connected\":%s,\"ip\":\"%s\",\"retry_count\":%lu},"
            "\"display\":{\"mode\":\"%s\",\"brightness_pct\":%u},"
            "\"weather\":{\"available\":%s,\"last_success_unix\":%lld,"
@@ -223,7 +227,12 @@ static void status_handler(char *buffer, size_t buffer_size) {
            "\"ota\":{\"state\":\"%s\",\"progress_pct\":%d},"
            "\"diagnostics\":{\"last_reset_reason\":\"%s\","
            "\"boot_count\":%lu,\"free_heap\":%lu,\"min_free_heap\":%lu}}",
-           snap.firmware_version != nullptr ? snap.firmware_version : NOWTUBE_FIRMWARE_REV,
+           snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
+           snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
+           snap.build.git_sha != nullptr ? snap.build.git_sha : "unknown",
+           snap.build.git_dirty ? "true" : "false",
+           snap.build.build_time_utc != nullptr ? snap.build.build_time_utc : "",
+           snap.build.asset_rev != nullptr ? snap.build.asset_rev : NOWTUBE_ASSET_REV,
            static_cast<unsigned long>(snap.uptime_s),
            snap.wifi.connected ? "true" : "false",
            snap.wifi.ip != nullptr ? snap.wifi.ip : "",
@@ -280,7 +289,13 @@ void app_boot_run() {
   ESP_LOGI(TAG, "boot: core services");
   diagnostics_service::init();
   config_service::init();
-  status_service::init(NOWTUBE_FIRMWARE_REV);
+  status_service::init(build_info_snapshot{
+      .firmware_version = NOWTUBE_FIRMWARE_REV,
+      .git_sha = NOWTUBE_BUILD_GIT_SHA,
+      .build_time_utc = NOWTUBE_BUILD_TIME_UTC,
+      .asset_rev = NOWTUBE_ASSET_REV,
+      .git_dirty = NOWTUBE_BUILD_GIT_DIRTY != 0,
+  });
 
   ESP_LOGI(TAG, "boot: weather service init");
   weather_service_init(on_conditions_fetched, on_forecast_fetched);

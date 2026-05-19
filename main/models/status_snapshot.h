@@ -19,8 +19,16 @@ struct wifi_status_snapshot {
   uint32_t retry_count{};
 };
 
-struct status_snapshot {
+struct build_info_snapshot {
   const char *firmware_version{};
+  const char *git_sha{};
+  const char *build_time_utc{};
+  const char *asset_rev{};
+  bool git_dirty{};
+};
+
+struct status_snapshot {
+  build_info_snapshot build{};
   uint32_t uptime_s{};
   const char *mode{};
   uint8_t brightness_pct{};

@@ -29,6 +29,7 @@
 #include "services/backlight_service.h"
 #include "services/config_service.h"
 #include "services/status_service.h"
+#include "version.h"
 #include "weather_service.h"
 #include <algorithm>
 
@@ -41,7 +42,6 @@ extern const char app_css_start[]      asm("_binary_app_css_start");
 extern const char app_css_end[]        asm("_binary_app_css_end");
 
 static const auto TAG = "webserver";
-static constexpr auto FIRMWARE_VERSION = "nowtube-0.1";
 constexpr size_t MAX_BODY_SIZE = 512;
 
 static status_request_callback_t s_status_callback = nullptr;
@@ -232,7 +232,7 @@ static auto ping_get_handler(httpd_req_t *req) -> esp_err_t {
         static_cast<uint32_t>(esp_timer_get_time() / 1000000ULL);
     snprintf(buf, sizeof(buf),
              "{\"status\":\"ok\",\"firmware\":\"%s\",\"uptime_s\":%" PRIu32 "}",
-             FIRMWARE_VERSION, uptime_s);
+             NOWTUBE_FIRMWARE_REV, uptime_s);
   }
   send_json(req, buf);
   return ESP_OK;

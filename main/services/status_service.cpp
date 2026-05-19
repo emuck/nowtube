@@ -17,8 +17,8 @@ static status_snapshot s_snapshot{};
 static char s_wifi_ip[16] = "";
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 
-void init(const char *firmware_version) {
-  s_snapshot.firmware_version = firmware_version;
+void init(const build_info_snapshot &build) {
+  s_snapshot.build = build;
   s_snapshot.mode = "CLOCK";
   s_snapshot.brightness_pct = 0;
   s_snapshot.wifi.connected = false;
