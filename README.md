@@ -251,6 +251,18 @@ The OTA implementation:
 
 **Important:** OTA updates only the app binary (`nowtube.bin` at partition `ota_0/ota_1`). The SPIFFS partition (icons, web assets) is at a separate address and is **not** updated by OTA. Use `POST /api/spiffs/upload` to replace individual icon files, or perform a full `idf.py flash` via USB to replace the entire SPIFFS image.
 
+For releases that change SPIFFS assets, you can push the full release asset set
+over Wi-Fi:
+
+```bash
+python3 tools/upload_spiffs_assets.py <device-ip>
+```
+
+Recommended public upgrade flow for an asset-changing release such as `0.6`:
+1. Upload the new firmware via the web UI or `POST /api/ota/upload`
+2. Run `python3 tools/upload_spiffs_assets.py <device-ip>`
+3. Refresh `GET /api/status` / the web UI and confirm the expected asset set is present
+
 ---
 
 ## Changing Fonts

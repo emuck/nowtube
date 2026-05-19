@@ -10,7 +10,7 @@
 
 namespace status_service {
 
-void init(const char *firmware_version);
+void init(const build_info_snapshot &build);
 void set_brightness(uint8_t brightness_pct);
 void set_mode(const char *mode_name);
 void set_wifi(bool connected, const char *ip_address);

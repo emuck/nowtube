@@ -38,10 +38,16 @@ function statusRow(label, value, cls) {
 
 async function loadStatus() {
   const s = await fetchJson("/api/status");
+  const b = s.build ?? {};
   const w = s.weather;
   const failCount = w.fetch_fail ?? 0;
   const okCount   = w.fetch_ok   ?? 0;
   const lastErr   = w.last_error;
+  const version   = b.version ?? s.firmware ?? "unknown";
+  const gitSha    = b.git_sha ?? "unknown";
+  const assetRev  = b.asset_rev ?? "unknown";
+  const buildTime = b.build_time_utc ?? "unknown";
+  const dirtyNote = b.git_dirty ? " dirty" : "";
 
   const wifiVal = s.wifi.connected
     ? `Connected &middot; ${s.wifi.ip}`
@@ -54,7 +60,9 @@ async function loadStatus() {
     : `${okCount} ok`;
 
   let rows = [
-    statusRow("Firmware",  `v${s.firmware}`),
+    statusRow("Firmware",  `v${version}`),
+    statusRow("Build",     `${gitSha}${dirtyNote} &middot; ${assetRev}`),
+    statusRow("Built",     buildTime),
     statusRow("Uptime",    fmtUptime(s.uptime_s)),
     statusRow("Mode",      `${s.display.mode} &middot; ${s.display.brightness_pct}% brightness`),
     statusRow("Wi-Fi",     wifiVal, wifiCls),

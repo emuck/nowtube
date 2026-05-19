@@ -1,3 +1,34 @@
+find_package(Git QUIET)
+
+set(NOWTUBE_BUILD_GIT_SHA "unknown")
+set(NOWTUBE_BUILD_GIT_DIRTY 0)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --short=12 HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/.."
+        OUTPUT_VARIABLE NOWTUBE_BUILD_GIT_SHA
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" diff --quiet --ignore-submodules HEAD --
+        WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/.."
+        RESULT_VARIABLE NOWTUBE_GIT_DIFF_RESULT
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+    if(NOT NOWTUBE_GIT_DIFF_RESULT EQUAL 0)
+        set(NOWTUBE_BUILD_GIT_DIRTY 1)
+    endif()
+endif()
+
+string(TIMESTAMP NOWTUBE_BUILD_TIME_UTC "%Y-%m-%dT%H:%M:%SZ" UTC)
+configure_file(
+    "${CMAKE_CURRENT_LIST_DIR}/build_info.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/build_info.h"
+    @ONLY
+)
+
 idf_component_register(
         EMBED_TXTFILES
         "spiffs/index.html"
@@ -45,6 +76,7 @@ idf_component_register(
         INCLUDE_DIRS
         "."
         "displays/clock"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 
 spiffs_create_partition_image(spiffs spiffs FLASH_IN_PROJECT)

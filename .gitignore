@@ -44,6 +44,7 @@ nextube_assets/
 
 # macOS metadata
 .DS_Store
+.cache/
 
 # using sdkconfig.defaults instead
 sdkconfig
