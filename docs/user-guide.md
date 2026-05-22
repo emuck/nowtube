@@ -23,9 +23,11 @@ firmware updates — no engineering background required.
 
 ## 1. First-Time Setup
 
-This is the one time you will need a USB cable and a Linux computer. After this
-first flash, all future firmware updates happen over your home WiFi — no cable
-needed.
+This is the one time you will need a USB cable and a Linux computer. This first
+install is a **full flash** that replaces the stock firmware and writes the
+bootloader, partition table, app image, and SPIFFS assets. After this first
+flash, future updates can happen over your home WiFi — no cable needed unless
+you want to do another full flash.
 
 > **Using macOS?** The steps are the same. Substitute `/dev/cu.usbserial-*`
 > wherever you see `/dev/ttyUSB0`, and follow the
@@ -382,6 +384,14 @@ The LEDs rotate through colors automatically with each breath cycle.
 
 After the first USB flash, all future updates happen over WiFi from your browser.
 
+### Which Update Path Should I Use?
+
+- **Stock firmware → nowtube:** USB full flash required.
+- **Older nowtube release → newer release with the same asset set:** browser OTA is enough.
+- **Older nowtube release → newer release with updated icons/web assets:** browser OTA
+  **plus** a SPIFFS asset update, or a USB full flash.
+- **Not sure what is currently installed:** use the USB full-flash path.
+
 ### Getting the New Firmware File
 
 Build it locally:
@@ -396,6 +406,9 @@ The compiled file is at `build/nowtube.bin`.
 Or download a release binary from the
 [GitHub releases page](https://github.com/emuck/nowtube/releases).
 
+If you are updating from a Windows 11 machine, the usual path is to download
+the tagged `nowtube.bin` release file rather than build it locally.
+
 ### Flashing Over WiFi
 
 1. Open `http://<device-ip>/` in a browser
@@ -408,6 +421,27 @@ Or download a release binary from the
 The device verifies the file's integrity before committing it. If something goes
 wrong during the upload, it stays on the old firmware — it won't be left in a
 broken state.
+
+### OTA vs. SPIFFS Asset Updates
+
+These are currently **different interfaces**:
+
+- The **Firmware Update** section in the browser uploads only `nowtube.bin`.
+- The helper script uploads only SPIFFS asset files. It does **not** upload
+  `nowtube.bin`.
+
+```bash
+python3 tools/upload_spiffs_assets.py <device-ip>
+```
+
+The helper script uses only Python 3 standard-library modules and is supported
+on macOS, Linux, and Windows 11 with Python 3.
+
+Releases that change `asset_rev` need both steps:
+
+1. Upload the new firmware in the browser
+2. Run `python3 tools/upload_spiffs_assets.py <device-ip>`
+3. Refresh the web UI and confirm the device reports the expected build and assets
 
 ### Using curl Instead
 
