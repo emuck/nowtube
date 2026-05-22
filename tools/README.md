@@ -82,8 +82,11 @@ python3 tools/upload_spiffs_assets.py 192.168.88.25 --only moon.png app.js app.c
 ### Notes
 
 - Uploads only `.png`, `.html`, `.js`, and `.css` files.
+- Does **not** upload `nowtube.bin`; firmware OTA remains a separate web or curl step.
 - Skips bootstrap/sample files like `wifi.sample.txt` and `weather.sample.txt`.
 - The device must already be reachable on your local network.
+- Uses only Python 3 standard-library modules.
+- Supported on macOS, Linux, and Windows 11 with Python 3.
 
 ### Recommended fonts
 

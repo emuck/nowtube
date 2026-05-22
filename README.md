@@ -14,7 +14,7 @@ Based on [previoustube](https://github.com/previoustube/previoustube) by Ian Lev
 - **Clock** — fast static time display with typography-driven updates; Space Mono or Nixie font selectable
 - **TODAY** — 6-panel ambient display: weekday, month/day + weather icon, day number, wind, humidity (or AQI), and next sun event
 - **FORECAST** — 5-day outlook across 6 panels; day codes first, then condition icons revealed mid-dwell via phase timer
-- **Web UI** — browser-based configuration served directly by the device; includes firmware update and asset upload
+- **Web UI** — browser-based configuration served directly by the device; includes firmware update
 - **OTA Updates** — browser-upload and curl-based OTA; no local HTTP server required after first USB flash
 - **Google Fonts** — one-command font swapping via `tools/font_convert.py`
 - **Game** — Tube Invaders: 6-lane vertical shooter across all 6 displays; long-press left to enter/exit
@@ -144,6 +144,12 @@ nano main/spiffs/wifi.txt   # set ssid= and psk=
 
 ### 4. Build and flash
 
+This first flash is the **stock firmware replacement** path. It is a **USB full
+flash** and writes the bootloader, partition table, app image, and SPIFFS
+assets in one operation. Stock firmware users must use this path first; the
+browser OTA workflow does not exist until nowtube is already running on the
+device.
+
 ```bash
 source ~/esp/esp-idf/export.sh
 
@@ -231,7 +237,9 @@ Known issues / gaps:
 
 ## OTA Firmware Updates
 
-Browser-upload OTA is the primary method — select `build/nowtube.bin` in the web UI's Firmware Update section and click **Flash Firmware**. No local HTTP server required.
+Browser-upload OTA is the primary method for **app image updates** once the
+device is already running nowtube — select `build/nowtube.bin` in the web UI's
+Firmware Update section and click **Flash Firmware**. No local HTTP server required.
 
 curl-based OTA is also supported:
 
@@ -249,14 +257,36 @@ The OTA implementation:
 - Reboots only after a successful write; a corrupted upload leaves the current firmware intact
 - ESP-IDF rollback-safe: if the new firmware fails to boot, the previous slot is restored automatically
 
-**Important:** OTA updates only the app binary (`nowtube.bin` at partition `ota_0/ota_1`). The SPIFFS partition (icons, web assets) is at a separate address and is **not** updated by OTA. Use `POST /api/spiffs/upload` to replace individual icon files, or perform a full `idf.py flash` via USB to replace the entire SPIFFS image.
+**Important:** OTA updates only the app binary (`nowtube.bin` at partition
+`ota_0/ota_1`). The SPIFFS partition (icons, web assets) is at a separate
+address and is **not** updated by OTA. Use `POST /api/spiffs/upload` to replace
+individual icon files, `tools/upload_spiffs_assets.py` to push a full release
+asset set over Wi-Fi, or perform a full `idf.py flash` via USB to replace the
+entire SPIFFS image.
 
-For releases that change SPIFFS assets, you can push the full release asset set
-over Wi-Fi:
+### Which update path should I use?
+
+- **Stock firmware → nowtube:** USB full flash required.
+- **Older nowtube release → new release with same `asset_rev`:** app OTA is enough.
+- **Older nowtube release → new release with different `asset_rev` (such as `0.6`):**
+  app OTA **plus** SPIFFS asset update, or USB full flash.
+- **Unsure what is on the device:** use the USB full-flash path.
+
+### OTA vs. SPIFFS asset updates
+
+These are currently **different interfaces**:
+
+- The built-in **Firmware Update** section in the web UI uploads only the app
+  binary via `POST /api/ota/upload`.
+- The helper script uploads only SPIFFS asset files. It does **not** upload
+  `nowtube.bin`.
 
 ```bash
 python3 tools/upload_spiffs_assets.py <device-ip>
 ```
+
+The helper script uses only Python 3 standard-library modules and is supported
+on macOS, Linux, and Windows 11 with Python 3.
 
 Recommended public upgrade flow for an asset-changing release such as `0.6`:
 1. Upload the new firmware via the web UI or `POST /api/ota/upload`
