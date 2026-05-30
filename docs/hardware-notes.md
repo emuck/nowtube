@@ -58,7 +58,7 @@ GPIO 16/17 are used for PSRAM on ESP32-WROVER-E — do not use.
 
 | Button | Tap | Long-press (>1s) |
 |--------|-----|-----------------|
-| Left | Cycle display mode (no-op in clock-only build) | Reset to CLOCK |
+| Left | Cycle display mode (no-op in clock-only build) | Enter / exit Tube Invaders |
 | Middle | Cycle brightness (100% → 70% → 40% → 20% → 5% → 0% → …) | Toggle recovery AP (enter/cancel) |
 | Right | Cycle LED color / toggle uniform↔random (Mixed mode) | Cycle backlight mode (Normal → Breathable → Mixed → Normal) |
 

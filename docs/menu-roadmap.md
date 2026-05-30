@@ -17,7 +17,7 @@ flowchart LR
     R --> Rs["Mixed: toggle uniform/random\nElse: cycle LED color or off"]
   end
   subgraph Long_press
-    L --> Ll["Reset to CLOCK"]
+    L --> Ll["Enter / exit Tube Invaders"]
     M --> Ml["Toggle recovery AP\n(enter / cancel)"]
     R --> Rl["Cycle backlight mode\nNormal → Breathable → Mixed → Normal"]
   end
@@ -40,8 +40,8 @@ flowchart LR
 
 ## Left and middle
 
-- **Left short:** In clock-only build: no-op (stay on clock). Else: cycle display mode (CLOCK / WEATHER / DATE / …).
-- **Left long:** Reset to CLOCK and refresh.
+- **Left short:** In clock-only build: no-op (stay on clock). Else: cycle display mode (CLOCK / TODAY / FORECAST / …).
+- **Left long:** Enter Tube Invaders. If already in GAME mode, exit to CLOCK and resume normal cycling.
 - **Middle short:** Cycle LCD brightness: 100% → 70% → 40% → 20% → 5% → 0% → 100% → …
 - **Middle long:** Toggle recovery AP (`nowtube-setup`, open, 192.168.4.1). First long-press enters recovery mode; second long-press cancels and returns to normal. While active: each of the six displays shows one segment of the recovery instructions (`SETUP MODE` → `JOIN WI-FI` → `nowtube-setup` → `OPEN A BROWSER` → `GO TO:` → `192.168.4.1`), LEDs go solid dim blue, and LCD brightness is temporarily forced to 40% regardless of the user's saved setting (the saved value is restored on exit). Connect to `nowtube-setup`, open `http://192.168.4.1/`, enter credentials, and reboot.
 
