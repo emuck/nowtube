@@ -48,7 +48,7 @@ Key decisions:
 
 | Button | GPIO | Tap | Long-press |
 |---|---|---|---|
-| Left | GPIO4 | Cycle display mode | Reset to CLOCK |
+| Left | GPIO4 | Cycle display mode | Enter / exit Tube Invaders |
 | Middle | GPIO2 | Cycle brightness (100%→70%→40%→20%→5%→0%) | Toggle recovery AP (nowtube-setup / 192.168.4.1) |
 | Right | GPIO15 | Cycle LED color palette | Cycle backlight mode |
 
@@ -359,4 +359,3 @@ nowtube/
     menu-roadmap.md
   docs/PROJECT_PLAN.md         ← this file
 ```
-

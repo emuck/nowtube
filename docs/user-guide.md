@@ -326,7 +326,7 @@ There are three capacitive touch buttons on the front of the device.
 
 | Button | Tap | Long Press (hold ~1 s) |
 |---|---|---|
-| **Left** | Cycle display mode | Reset to clock / exit game |
+| **Left** | Cycle display mode | Enter / exit Tube Invaders |
 | **Middle** | Cycle LCD brightness | Enter / exit recovery mode |
 | **Right** | Cycle LED color | Cycle LED backlight mode |
 

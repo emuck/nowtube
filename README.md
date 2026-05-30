@@ -27,7 +27,7 @@ No Raspberry Pi, no companion app, no external services required. The device wor
 
 | Button | Tap | Long Press |
 |---|---|---|
-| Left (GPIO4) | Cycle display mode | Reset to clock |
+| Left (GPIO4) | Cycle display mode | Enter / exit Tube Invaders |
 | Middle (GPIO2) | Cycle LCD brightness | — |
 | Right (GPIO15) | Cycle LED color palette | Cycle backlight mode |
 
