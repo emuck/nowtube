@@ -41,6 +41,7 @@ async function loadStatus() {
   const b = s.build ?? {};
   const w = s.weather;
   const failCount = w.fetch_fail ?? 0;
+  const consecutiveFailCount = w.fetch_fail_consecutive ?? 0;
   const okCount   = w.fetch_ok   ?? 0;
   const lastErr   = w.last_error;
   const version   = b.version ?? s.firmware ?? "unknown";
@@ -55,9 +56,9 @@ async function loadStatus() {
   const wifiCls = s.wifi.connected ? "ok" : "error";
 
   const weatherVal = w.available ? `Updated ${fmtTime(w.last_success_unix)}` : "No data";
-  const fetchVal   = failCount > 0
-    ? `${okCount} ok &middot; <span class="status-value error">${failCount} failed</span>`
-    : `${okCount} ok`;
+  const fetchVal   = consecutiveFailCount > 0
+    ? `${okCount} ok &middot; <span class="status-value error">${consecutiveFailCount} failing now</span> &middot; ${failCount} lifetime failed`
+    : `${okCount} ok${failCount > 0 ? ` &middot; ${failCount} lifetime failed` : ""}`;
 
   let rows = [
     statusRow("Firmware",  `v${version}`),
@@ -69,7 +70,7 @@ async function loadStatus() {
     statusRow("Weather",   weatherVal, w.available ? "ok" : "warn"),
     statusRow("Fetches",   fetchVal),
   ];
-  if (!w.available && lastErr && lastErr !== "ok" && lastErr !== "none") {
+  if (consecutiveFailCount > 0 && lastErr && lastErr !== "ok" && lastErr !== "none") {
     rows.push(statusRow("Last error", lastErr, "error"));
   }
 

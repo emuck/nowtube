@@ -28,6 +28,8 @@ static constexpr size_t URL_BUF_SIZE      = 384;
 static constexpr uint8_t  REFRESH_MIN_MINUTES = 5;
 static constexpr uint8_t  REFRESH_MAX_MINUTES = 30;
 static constexpr int64_t  FETCH_TIMEOUT_US    = 60'000'000LL;
+static constexpr uint8_t  FETCH_MAX_ATTEMPTS  = 3;
+static constexpr TickType_t FETCH_RETRY_DELAY  = pdMS_TO_TICKS(1500);
 
 // Config snapshot — protected by s_config_mutex.
 static bool   s_fetch_aqi        = false;
@@ -48,6 +50,9 @@ static portMUX_TYPE          s_fetch_lock        = portMUX_INITIALIZER_UNLOCKED;
 static char                  s_last_error[80]    = "none";
 static int                   s_fail_count        = 0;
 static int                   s_success_count     = 0;
+static int                   s_consecutive_fail_count = 0;
+static time_t                s_last_attempt_unix = 0;
+static time_t                s_last_error_unix   = 0;
 static SemaphoreHandle_t     s_config_mutex      = nullptr;
 
 // ---------------------------------------------------------------------------
@@ -93,6 +98,20 @@ static void finish_fetch_task() {
     vTaskDelete(nullptr);
 }
 
+static void record_fetch_failure(const char *message) {
+    snprintf(s_last_error, sizeof(s_last_error), "%s", message);
+    s_fail_count++;
+    s_consecutive_fail_count++;
+    s_last_error_unix = time(nullptr);
+    ESP_LOGE(TAG, "%s", s_last_error);
+}
+
+static void record_fetch_success() {
+    snprintf(s_last_error, sizeof(s_last_error), "ok");
+    s_success_count++;
+    s_consecutive_fail_count = 0;
+}
+
 static void fetch_task([[maybe_unused]] void *arg) {
     char   temp_unit[sizeof(s_temp_unit)];
     char   wind_unit[sizeof(s_wind_unit)];
@@ -111,11 +130,12 @@ static void fetch_task([[maybe_unused]] void *arg) {
     fetch_aqi = s_fetch_aqi;
     if (s_config_mutex) xSemaphoreGive(s_config_mutex);
 
+    s_last_attempt_unix = time(nullptr);
     ESP_LOGI(TAG, "Weather fetch starting");
 #define FETCH_FAIL(fmt, ...) do { \
-        snprintf(s_last_error, sizeof(s_last_error), fmt, ##__VA_ARGS__); \
-        s_fail_count++; \
-        ESP_LOGE(TAG, "%s", s_last_error); \
+        char fail_msg[sizeof(s_last_error)]; \
+        snprintf(fail_msg, sizeof(fail_msg), fmt, ##__VA_ARGS__); \
+        record_fetch_failure(fail_msg); \
     } while(0)
 
     char *buf = static_cast<char *>(malloc(RESPONSE_BUF_SIZE));
@@ -128,45 +148,68 @@ static void fetch_task([[maybe_unused]] void *arg) {
     char url[URL_BUF_SIZE];
     weather_build_url(url, sizeof(url), lat, lon, temp_unit, wind_unit);
 
-    esp_http_client_config_t http_cfg = {};
-    http_cfg.url               = url;
-    http_cfg.timeout_ms        = 10000;
-    http_cfg.crt_bundle_attach = esp_crt_bundle_attach;
+    int total = 0;
+    int status_code = 0;
+    char attempt_error[sizeof(s_last_error)] = "none";
+    bool http_ok = false;
 
-    esp_http_client_handle_t client = esp_http_client_init(&http_cfg);
-    if (!client) {
-        FETCH_FAIL("HTTP client init failed");
-        free(buf);
-        finish_fetch_task();
-        return;
+    for (uint8_t attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; ++attempt) {
+        esp_http_client_config_t http_cfg = {};
+        http_cfg.url               = url;
+        http_cfg.timeout_ms        = 10000;
+        http_cfg.crt_bundle_attach = esp_crt_bundle_attach;
+
+        esp_http_client_handle_t client = esp_http_client_init(&http_cfg);
+        if (!client) {
+            snprintf(attempt_error, sizeof(attempt_error), "HTTP client init failed");
+        } else {
+            esp_err_t err = esp_http_client_open(client, 0);
+            if (err != ESP_OK) {
+                snprintf(attempt_error, sizeof(attempt_error),
+                         "HTTP open: %s", esp_err_to_name(err));
+            } else {
+                esp_http_client_fetch_headers(client);
+
+                total = 0;
+                int n = 0;
+                while (total < (int)RESPONSE_BUF_SIZE - 1 &&
+                       (n = esp_http_client_read(client,
+                                                 buf + total,
+                                                 RESPONSE_BUF_SIZE - 1 - total)) > 0) {
+                    total += n;
+                }
+                buf[total] = '\0';
+
+                status_code = esp_http_client_get_status_code(client);
+                esp_http_client_close(client);
+
+                if (status_code == 200 && total > 0) {
+                    http_ok = true;
+                } else {
+                    snprintf(attempt_error, sizeof(attempt_error),
+                             "HTTP %d, %d bytes", status_code, total);
+                }
+            }
+            esp_http_client_cleanup(client);
+        }
+
+        if (http_ok) {
+            if (attempt > 1) {
+                ESP_LOGI(TAG, "Weather fetch recovered on attempt %u/%u",
+                         attempt, FETCH_MAX_ATTEMPTS);
+            }
+            break;
+        }
+
+        ESP_LOGW(TAG, "Weather fetch attempt %u/%u failed: %s",
+                 attempt, FETCH_MAX_ATTEMPTS, attempt_error);
+        if (attempt < FETCH_MAX_ATTEMPTS) {
+            vTaskDelay(FETCH_RETRY_DELAY);
+        }
     }
 
-    esp_err_t err = esp_http_client_open(client, 0);
-    if (err != ESP_OK) {
-        FETCH_FAIL("HTTP open: %s", esp_err_to_name(err));
-        esp_http_client_cleanup(client);
-        free(buf);
-        finish_fetch_task();
-        return;
-    }
-
-    esp_http_client_fetch_headers(client);
-
-    int total = 0, n = 0;
-    while (total < (int)RESPONSE_BUF_SIZE - 1 &&
-           (n = esp_http_client_read(client,
-                                     buf + total,
-                                     RESPONSE_BUF_SIZE - 1 - total)) > 0) {
-        total += n;
-    }
-    buf[total] = '\0';
-
-    int status_code = esp_http_client_get_status_code(client);
-    esp_http_client_close(client);
-    esp_http_client_cleanup(client);
-
-    if (status_code != 200 || total == 0) {
-        FETCH_FAIL("HTTP %d, %d bytes", status_code, total);
+    if (!http_ok) {
+        FETCH_FAIL("%s", attempt_error);
         free(buf);
         finish_fetch_task();
         return;
@@ -256,8 +299,7 @@ static void fetch_task([[maybe_unused]] void *arg) {
              cond.humidity, cond.sunrise_min, cond.sunset_min,
              result.forecast.days[0].high, result.forecast.days[0].low);
 
-    snprintf(s_last_error, sizeof(s_last_error), "ok");
-    s_success_count++;
+    record_fetch_success();
     if (s_on_conditions) s_on_conditions(result.conditions);
     if (s_on_forecast)   s_on_forecast(result.forecast);
     finish_fetch_task();
@@ -266,6 +308,9 @@ static void fetch_task([[maybe_unused]] void *arg) {
 const char *weather_service_last_error()  { return s_last_error; }
 int         weather_service_fail_count()  { return s_fail_count; }
 int         weather_service_success_count() { return s_success_count; }
+int         weather_service_consecutive_fail_count() { return s_consecutive_fail_count; }
+time_t      weather_service_last_attempt_unix() { return s_last_attempt_unix; }
+time_t      weather_service_last_error_unix() { return s_last_error_unix; }
 
 // ---------------------------------------------------------------------------
 // Timer

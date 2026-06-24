@@ -223,10 +223,13 @@ static void status_handler(char *buffer, size_t buffer_size) {
            "\"wifi\":{\"connected\":%s,\"ip\":\"%s\",\"retry_count\":%lu},"
            "\"display\":{\"mode\":\"%s\",\"brightness_pct\":%u},"
            "\"weather\":{\"available\":%s,\"last_success_unix\":%lld,"
-           "\"fetch_ok\":%d,\"fetch_fail\":%d,\"last_error\":\"%s\"},"
+           "\"last_attempt_unix\":%lld,\"last_error_unix\":%lld,"
+           "\"fetch_ok\":%d,\"fetch_fail\":%d,\"fetch_fail_consecutive\":%d,"
+           "\"last_error\":\"%s\"},"
            "\"ota\":{\"state\":\"%s\",\"progress_pct\":%d},"
            "\"diagnostics\":{\"last_reset_reason\":\"%s\","
-           "\"boot_count\":%lu,\"free_heap\":%lu,\"min_free_heap\":%lu}}",
+           "\"boot_count\":%lu,\"free_heap\":%lu,\"min_free_heap\":%lu,"
+           "\"free_internal_heap\":%lu,\"min_free_internal_heap\":%lu}}",
            snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
            snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
            snap.build.git_sha != nullptr ? snap.build.git_sha : "unknown",
@@ -241,8 +244,11 @@ static void status_handler(char *buffer, size_t buffer_size) {
            static_cast<unsigned>(snap.brightness_pct),
            snap.weather_available ? "true" : "false",
            static_cast<long long>(snap.last_weather_sync),
+           static_cast<long long>(weather_service_last_attempt_unix()),
+           static_cast<long long>(weather_service_last_error_unix()),
            weather_service_success_count(),
            weather_service_fail_count(),
+           weather_service_consecutive_fail_count(),
            weather_service_last_error(),
            webserver_ota_state(),
            webserver_ota_progress(),
@@ -250,7 +256,9 @@ static void status_handler(char *buffer, size_t buffer_size) {
                ? snap.diagnostics.last_reset_reason : "unknown",
            static_cast<unsigned long>(snap.diagnostics.boot_count),
            static_cast<unsigned long>(snap.diagnostics.free_heap),
-           static_cast<unsigned long>(snap.diagnostics.min_free_heap));
+           static_cast<unsigned long>(snap.diagnostics.min_free_heap),
+           static_cast<unsigned long>(snap.diagnostics.free_internal_heap),
+           static_cast<unsigned long>(snap.diagnostics.min_free_internal_heap));
 }
 
 static void dispatch_event_handler([[maybe_unused]] void *handler_args,

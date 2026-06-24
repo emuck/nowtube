@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <ctime>
+
 #include "models/current_conditions.h"
 #include "models/forecast_data.h"
 
@@ -27,3 +29,6 @@ void weather_service_trigger_fetch();
 const char *weather_service_last_error();
 int weather_service_fail_count();
 int weather_service_success_count();
+int weather_service_consecutive_fail_count();
+time_t weather_service_last_attempt_unix();
+time_t weather_service_last_error_unix();

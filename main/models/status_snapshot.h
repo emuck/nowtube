@@ -11,6 +11,8 @@ struct diagnostics_snapshot {
   uint32_t boot_count{};
   uint32_t free_heap{};
   uint32_t min_free_heap{};
+  uint32_t free_internal_heap{};
+  uint32_t min_free_internal_heap{};
 };
 
 struct wifi_status_snapshot {

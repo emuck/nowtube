@@ -57,6 +57,10 @@ void init() {
 diagnostics_snapshot get_snapshot() {
   s_snapshot.free_heap     = static_cast<uint32_t>(esp_get_free_heap_size());
   s_snapshot.min_free_heap = static_cast<uint32_t>(esp_get_minimum_free_heap_size());
+  s_snapshot.free_internal_heap = static_cast<uint32_t>(
+      heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  s_snapshot.min_free_internal_heap = static_cast<uint32_t>(
+      heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
   return s_snapshot;
 }
 
