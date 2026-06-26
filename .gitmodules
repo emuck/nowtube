@@ -1,0 +1,3 @@
+[submodule "components/zvibe"]
+	path = components/zvibe
+	url = git@github.com:emuck/zvibe.git

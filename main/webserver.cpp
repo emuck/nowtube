@@ -588,7 +588,7 @@ static auto ota_status_get_handler(httpd_req_t *req) -> esp_err_t {
 
 // POST /api/spiffs/upload?name=filename — writes body to /spiffs/filename.
 // Allows pushing individual SPIFFS assets (icons, web UI files) without serial.
-// Accepted extensions: .png .html .js .css
+// Accepted extensions: .png .html .js .css, plus .z3 when zVibe is enabled.
 static auto spiffs_upload_handler(httpd_req_t *req) -> esp_err_t {
     char query[64] = {};
     char name[33]  = {};
@@ -602,9 +602,18 @@ static auto spiffs_upload_handler(httpd_req_t *req) -> esp_err_t {
         return nlen >= el && strcmp(name + nlen - el, ext) == 0;
     };
     if (nlen < 2 || nlen > 32 || strchr(name, '/') || strchr(name, '\\') ||
-        (!ends_with(".png") && !ends_with(".html") && !ends_with(".js") && !ends_with(".css"))) {
+        (!ends_with(".png") && !ends_with(".html") && !ends_with(".js") && !ends_with(".css")
+#ifdef ZVIBE_AVAILABLE
+         && !ends_with(".z3")
+#endif
+        )) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
-                            "invalid filename (must be *.png/html/js/css, no slashes)");
+#ifdef ZVIBE_AVAILABLE
+                            "invalid filename (must be *.png/html/js/css/z3, no slashes)"
+#else
+                            "invalid filename (must be *.png/html/js/css, no slashes)"
+#endif
+                            );
         return ESP_FAIL;
     }
 
@@ -776,15 +785,19 @@ static const httpd_uri_t uri_backlight_post = {
 
 // ---- Init -------------------------------------------------------------------
 
+static httpd_handle_t s_server = nullptr;
+
+void *webserver_get_handle() { return s_server; }
+
 void webserver_init(status_request_callback_t status_callback) {
   s_status_callback = status_callback;
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-  config.max_uri_handlers  = 20;
+  config.max_uri_handlers  = 24;  // base routes + headroom for optional components
   config.max_open_sockets  = 4;  // plenty of headroom with 16 total LwIP sockets
 
-  httpd_handle_t server = nullptr;
-  ESP_ERROR_CHECK(httpd_start(&server, &config));
+  ESP_ERROR_CHECK(httpd_start(&s_server, &config));
+  httpd_handle_t server = s_server;
 
   httpd_register_uri_handler(server, &uri_health);
   httpd_register_uri_handler(server, &uri_app_css);

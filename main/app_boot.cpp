@@ -35,6 +35,9 @@
 #include "version.h"
 #include "weather_service.h"
 #include "webserver.h"
+#ifdef ZVIBE_AVAILABLE
+#include "zvibe_service.h"
+#endif
 
 // ---------------------------------------------------------------------------
 
@@ -215,6 +218,9 @@ static void on_wifi_recovery_toggle() {
 
 static void status_handler(char *buffer, size_t buffer_size) {
   status_snapshot snap = status_service::get_snapshot();
+#ifdef ZVIBE_AVAILABLE
+  zvibe_status_snapshot_t zvibe = zvibe_service_status();
+#endif
   snprintf(buffer, buffer_size,
            "{\"status\":\"ok\",\"firmware\":\"%s\","
            "\"build\":{\"version\":\"%s\",\"git_sha\":\"%s\","
@@ -229,7 +235,11 @@ static void status_handler(char *buffer, size_t buffer_size) {
            "\"ota\":{\"state\":\"%s\",\"progress_pct\":%d},"
            "\"diagnostics\":{\"last_reset_reason\":\"%s\","
            "\"boot_count\":%lu,\"free_heap\":%lu,\"min_free_heap\":%lu,"
-           "\"free_internal_heap\":%lu,\"min_free_internal_heap\":%lu}}",
+           "\"free_internal_heap\":%lu,\"min_free_internal_heap\":%lu},"
+           "\"zvibe\":{\"enabled\":%s,\"connected\":%s,"
+           "\"game_loaded\":\"%s\",\"game_size\":%lu,"
+           "\"game_buffer_allocated\":%s,\"ws_send_fail\":%lu,"
+           "\"queue_drop\":%lu,\"queue_waiting\":%lu}}",
            snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
            snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
            snap.build.git_sha != nullptr ? snap.build.git_sha : "unknown",
@@ -258,7 +268,27 @@ static void status_handler(char *buffer, size_t buffer_size) {
            static_cast<unsigned long>(snap.diagnostics.free_heap),
            static_cast<unsigned long>(snap.diagnostics.min_free_heap),
            static_cast<unsigned long>(snap.diagnostics.free_internal_heap),
-           static_cast<unsigned long>(snap.diagnostics.min_free_internal_heap));
+           static_cast<unsigned long>(snap.diagnostics.min_free_internal_heap),
+#ifdef ZVIBE_AVAILABLE
+           zvibe.enabled ? "true" : "false",
+           zvibe.connected ? "true" : "false",
+           zvibe.game_loaded != nullptr ? zvibe.game_loaded : "",
+           static_cast<unsigned long>(zvibe.game_size),
+           zvibe.game_buffer_allocated ? "true" : "false",
+           static_cast<unsigned long>(zvibe.ws_send_fail),
+           static_cast<unsigned long>(zvibe.queue_drop),
+           static_cast<unsigned long>(zvibe.queue_waiting)
+#else
+           "false",
+           "false",
+           "",
+           0UL,
+           "false",
+           0UL,
+           0UL,
+           0UL
+#endif
+           );
 }
 
 static void dispatch_event_handler([[maybe_unused]] void *handler_args,
@@ -348,6 +378,10 @@ void app_boot_run() {
 
   ESP_LOGI(TAG, "boot: webserver_init");
   webserver_init(status_handler);
+#ifdef ZVIBE_AVAILABLE
+  ESP_LOGI(TAG, "boot: zvibe_service_init");
+  zvibe_service_init();
+#endif
 
   {
     esp_timer_create_args_t args = {

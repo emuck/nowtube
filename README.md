@@ -159,6 +159,27 @@ ls /dev/ttyUSB* /dev/ttyACM*
 idf.py -p /dev/ttyUSB0 build flash monitor
 ```
 
+### Optional: zVibe web terminal
+
+nowtube can optionally build a browser-based zVibe Z-machine terminal. This is
+disabled by default and requires the public zVibe submodule.
+
+```bash
+git submodule update --init components/zvibe
+idf.py menuconfig
+# Component config → nowtube optional features → Enable zVibe web terminal
+idf.py build
+```
+
+When enabled, the device serves `http://<device-ip>/zvibe.html` and accepts
+Z-machine v3 story uploads through the SPIFFS upload endpoint. nowtube does not
+ship copyrighted story files. The default Restaurant story is maintained in the
+zVibe catalog; copy it into `main/spiffs/` with:
+
+```bash
+./scripts/add-game.sh
+```
+
 ### 5. First run
 
 The device will:
@@ -221,10 +242,10 @@ API surface:
 - `GET /api/config` / `POST /api/config` — read/write device configuration
 - `POST /api/ota/upload` — upload firmware binary directly from browser
 - `GET /api/ota/status` — poll OTA progress
-- `POST /api/spiffs/upload?name=<filename>.png` — replace a SPIFFS icon asset without USB reflash (see security note below)
+- `POST /api/spiffs/upload?name=<filename>.png` — replace a SPIFFS icon asset without USB reflash (also accepts `.z3` when zVibe is enabled; see security note below)
 - `POST /api/reboot` — reboot the device
 
-**Security note:** The web server binds to all interfaces on port 80 with no authentication. `POST /api/spiffs/upload` accepts `.png`, `.html`, `.js`, and `.css` files (name validated: no path separators, max 32 chars, allowed extension only) and writes them directly to the mounted SPIFFS partition. This is intentionally a local-network tool. Do not expose the device's HTTP port to the internet.
+**Security note:** The web server binds to all interfaces on port 80 with no authentication. `POST /api/spiffs/upload` accepts `.png`, `.html`, `.js`, and `.css` files by default, plus `.z3` when zVibe is enabled (name validated: no path separators, max 32 chars, allowed extension only), and writes them directly to the mounted SPIFFS partition. This is intentionally a local-network tool. Do not expose the device's HTTP port to the internet.
 
 Known issues / gaps:
 
@@ -337,7 +358,7 @@ nowtube/
 │   ├── forecast_parser.cpp/.h   # Forecast JSON parser (host-testable)
 │   └── *.cpp / *.h         # Remaining app code
 ├── tests/                  # Host-side unit tests (no hardware required)
-├── components/             # ESP-IDF components (RTC, NeoPixel, touch, etc.)
+├── components/             # ESP-IDF components (RTC, NeoPixel, touch, optional zVibe, etc.)
 ├── tools/                  # Developer tools (font converter, etc.)
 ├── fonts-src/              # Font source files (OTF + licenses)
 ├── docs/                   # Architecture, hardware, and user docs

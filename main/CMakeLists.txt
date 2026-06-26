@@ -77,6 +77,28 @@ idf_component_register(
         "."
         "displays/clock"
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        REQUIRES
+        zvibe_webterm
+        PRIV_REQUIRES
+        app_update
+        driver
+        esp_event
+        esp_http_client
+        esp_http_server
+        esp_netif
+        esp_psram
+        esp_timer
+        esp_wifi
+        fpm
+        json
+        lvgl
+        mbedtls
+        neopixel
+        nvs_flash
+        pcf8563
+        spiffs
+        timegm
+        touchpad
 )
 
 spiffs_create_partition_image(spiffs spiffs FLASH_IN_PROJECT)

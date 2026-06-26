@@ -1,0 +1,15 @@
+menu "nowtube optional features"
+
+    config NOWTUBE_ENABLE_ZVIBE_WEBTERM
+        bool "Enable zVibe web terminal"
+        default n
+        select HTTPD_WS_SUPPORT
+        help
+            Enable the optional browser-based zVibe Z-machine terminal.
+
+            This requires the public zVibe submodule at components/zvibe.
+            Run: git submodule update --init components/zvibe
+
+            When disabled, nowtube builds without zVibe code or routes.
+
+endmenu
