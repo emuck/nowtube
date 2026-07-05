@@ -18,7 +18,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPIFFS_DIR = REPO_ROOT / "main" / "spiffs"
-ALLOWED_SUFFIXES = {".png", ".html", ".js", ".css"}
+ALLOWED_SUFFIXES = {".png", ".html", ".js", ".css", ".z3"}
 
 
 def parse_args() -> argparse.Namespace:
