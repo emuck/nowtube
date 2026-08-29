@@ -34,6 +34,8 @@ idf_component_register(
         "spiffs/index.html"
         "spiffs/app.js"
         "spiffs/app.css"
+        "spiffs/panels.html"
+        "spiffs/mic-tune.html"
         SRCS
         "app_boot.cpp"
         "config_validation.cpp"
@@ -42,6 +44,7 @@ idf_component_register(
         "displays/forecast/forecast_display.cpp"
         "displays/game/game_display.cpp"
         "displays/game/game_logic.cpp"
+        "displays/spectrum/spectrum_display.cpp"
         "displays/today/today_display.cpp"
         "controllers/display_controller.cpp"
         "controllers/input_controller.cpp"
@@ -70,12 +73,15 @@ idf_component_register(
         "services/sound_manager.cpp"
         "services/config_service.cpp"
         "services/diagnostics_service.cpp"
+        "services/environment_sensor_service.cpp"
+        "services/microphone_service.cpp"
         "services/status_service.cpp"
         "spiram_allocate.cpp"
         "webserver.cpp"
         INCLUDE_DIRS
         "."
         "displays/clock"
+        "displays/spectrum"
         "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 

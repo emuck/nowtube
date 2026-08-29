@@ -29,6 +29,7 @@ SOFTWARE.
 #include <driver/i2c.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
+#include <esp_err.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -76,6 +77,10 @@ int32_t i2c_read(void *handle, uint8_t address, uint8_t reg, uint8_t *buffer, ui
     esp_err_t result;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_port_t port = *(i2c_port_t *)handle;
+    if (cmd == NULL) {
+        ESP_LOGE(TAG, "i2c command link allocation failed");
+        return ESP_ERR_NO_MEM;
+    }
 
     if (reg) {
         /* When reading specific register set the address pointer first. */
@@ -118,6 +123,10 @@ int32_t i2c_write(void *handle, uint8_t address, uint8_t reg, const uint8_t *buf
     esp_err_t result;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_port_t port = *(i2c_port_t *)handle;
+    if (cmd == NULL) {
+        ESP_LOGE(TAG, "i2c command link allocation failed");
+        return ESP_ERR_NO_MEM;
+    }
 
     ESP_LOGD(TAG, "Writing address 0x%02x register 0x%02x port %d", address, reg, port);
     ESP_LOG_BUFFER_HEX_LEVEL(TAG, buffer, size, ESP_LOG_DEBUG);

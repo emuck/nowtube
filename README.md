@@ -104,6 +104,8 @@ The following areas have been verified on a real device running current firmware
 | Wi-Fi recovery: middle long-press entry | ✅ Pass | AP starts, SSID visible, config UI reachable at 192.168.4.1, credentials saved, device reboots into STA mode |
 | Wi-Fi recovery: boot with no saved SSID | ✅ Pass | Full erase + comment-only wifi.txt; device boots directly into recovery AP, configures via web UI, reboots into STA mode |
 | GAME mode — enter/exit, play, sounds | ✅ Pass | Long-press left enters/exits; ship moves, fires, collision detected; FIRE/HIT/GAME_OVER/RESTART/BLOCKED sounds confirmed; high score persists across reboot |
+| SPECTRUM mode — microphone visualizer | ⚠️ Pending hardware validation | Uses the onboard analog microphone on GPIO35 / ADC1_CH7, based on Nextube-Remaster reverse engineering. |
+| Indoor temp/RH sensor | ⚠️ Pending hardware validation | Optional SHT30-compatible sensor at I2C 0x44; status API reports readings and TODAY humidity uses indoor RH when present. |
 
 ---
 

@@ -29,7 +29,9 @@
 #include "services/backlight_service.h"
 #include "services/sound_manager.h"
 #include "services/config_service.h"
+#include "services/environment_sensor_service.h"
 #include "services/diagnostics_service.h"
+#include "services/microphone_service.h"
 #include "services/status_service.h"
 #include "build_info.h"
 #include "version.h"
@@ -82,7 +84,7 @@ static void on_conditions_fetched(const current_conditions &data) {
 
 static cycle_config make_cycle_config() {
   const device_config &c = config_service::get_config();
-  return cycle_config{c.cycle_clock_s, c.cycle_today_s, c.cycle_forecast_s};
+  return cycle_config{c.cycle_clock_s, c.cycle_today_s, c.cycle_forecast_s, c.cycle_spectrum_s};
 }
 
 static void auto_cycle_cb([[maybe_unused]] void *arg) {
@@ -105,6 +107,26 @@ static void schedule_clock_cycle() {
   if (s_cycle_timer != nullptr) {
     schedule_cycle(make_cycle_config().clock_s * 1'000'000ULL);
   }
+}
+
+static uint64_t current_mode_delay_us(DisplayMode mode) {
+  const cycle_config cfg = make_cycle_config();
+  switch (mode) {
+  case DisplayMode::CLOCK:    return static_cast<uint64_t>(cfg.clock_s) * 1'000'000ULL;
+  case DisplayMode::TODAY:    return static_cast<uint64_t>(cfg.today_s) * 1'000'000ULL;
+  case DisplayMode::FORECAST: return static_cast<uint64_t>(cfg.forecast_s) * 1'000'000ULL;
+  case DisplayMode::SPECTRUM: return static_cast<uint64_t>(cfg.spectrum_s) * 1'000'000ULL;
+  case DisplayMode::DATE:     return static_cast<uint64_t>(cfg.clock_s) * 1'000'000ULL;
+  case DisplayMode::GAME:     return 3600ULL * 1'000'000ULL;
+  }
+  return static_cast<uint64_t>(cfg.clock_s) * 1'000'000ULL;
+}
+
+void app_boot_reschedule_current_mode_cycle() {
+  if (s_cycle_timer == nullptr) return;
+  uint64_t delay_us = current_mode_delay_us(display_controller::current_mode());
+  if (delay_us == 0) delay_us = 3600ULL * 1'000'000ULL;
+  schedule_cycle(delay_us);
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +237,8 @@ static void on_wifi_recovery_toggle() {
 
 static void status_handler(char *buffer, size_t buffer_size) {
   status_snapshot snap = status_service::get_snapshot();
+  environment_sensor_service::reading env;
+  bool env_valid = environment_sensor_service::get(env);
   snprintf(buffer, buffer_size,
            "{\"status\":\"ok\",\"firmware\":\"%s\","
            "\"build\":{\"version\":\"%s\",\"git_sha\":\"%s\","
@@ -225,6 +249,10 @@ static void status_handler(char *buffer, size_t buffer_size) {
            "\"weather\":{\"available\":%s,\"last_success_unix\":%lld,"
            "\"fetch_ok\":%d,\"fetch_fail\":%d,\"last_error\":\"%s\"},"
            "\"ota\":{\"state\":\"%s\",\"progress_pct\":%d},"
+           "\"environment\":{\"present\":%s,\"valid\":%s,"
+           "\"temp_c\":%.1f,\"humidity_pct\":%.1f},"
+           "\"rtc\":{\"valid_time\":%s,\"battery_ok\":%s,\"discipline_active\":%s,"
+           "\"last_error_ms\":%ld,\"max_error_ms\":%ld},"
            "\"diagnostics\":{\"last_reset_reason\":\"%s\","
            "\"boot_count\":%lu,\"free_heap\":%lu,\"min_free_heap\":%lu}}",
            snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
@@ -246,6 +274,15 @@ static void status_handler(char *buffer, size_t buffer_size) {
            weather_service_last_error(),
            webserver_ota_state(),
            webserver_ota_progress(),
+           environment_sensor_service::is_present() ? "true" : "false",
+           env_valid ? "true" : "false",
+           env_valid ? static_cast<double>(env.temp_c) : 0.0,
+           env_valid ? static_cast<double>(env.humidity_pct) : 0.0,
+           rtc_has_valid_time() ? "true" : "false",
+           rtc_battery_ok() ? "true" : "false",
+           rtc_discipline_active() ? "true" : "false",
+           static_cast<long>(rtc_last_error_ms()),
+           static_cast<long>(rtc_max_error_ms()),
            snap.diagnostics.last_reset_reason != nullptr
                ? snap.diagnostics.last_reset_reason : "unknown",
            static_cast<unsigned long>(snap.diagnostics.boot_count),
@@ -313,7 +350,12 @@ void app_boot_run() {
   lcds_set_brightness(boot_brightness);
   backlight_service::init(boot_brightness);
   sound_manager::init();
+  microphone_service::init();
+  microphone_service::start();
   bool got_time = rtc_init();
+  rtc_discipline_start();
+  environment_sensor_service::init();
+  environment_sensor_service::start();
 
   ESP_LOGI(TAG, "boot: wifi init");
   wifi_init(on_wifi_connected);

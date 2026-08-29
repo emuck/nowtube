@@ -41,6 +41,7 @@ DisplayMode config_validate_mode(DisplayMode mode) {
   case DisplayMode::CLOCK:
   case DisplayMode::TODAY:
   case DisplayMode::FORECAST:
+  case DisplayMode::SPECTRUM:
     return mode;
   case DisplayMode::DATE:
     return DisplayMode::CLOCK;  // legacy NVS value — coerce to CLOCK
@@ -74,6 +75,8 @@ void config_validate(device_config &config) {
   };
   config.cycle_today_s    = clamp_optional(config.cycle_today_s);
   config.cycle_forecast_s = clamp_optional(config.cycle_forecast_s);
+  config.cycle_spectrum_s = clamp_optional(config.cycle_spectrum_s);
+  if (config.mic_adc_channel > 7) config.mic_adc_channel = 7;
   // FORECAST dwell must be even (two-phase display splits it in half).
   if (config.cycle_forecast_s != 0 && (config.cycle_forecast_s % 2) != 0) {
     config.cycle_forecast_s += 1;

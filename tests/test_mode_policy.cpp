@@ -58,6 +58,13 @@ static void test_forecast_to_clock() {
   CHECK_EQ(t.delay_us, MODE_CYCLE_CLOCK_US);
 }
 
+static void test_spectrum_to_clock() {
+  SUITE("spectrum_to_clock");
+  auto t = mode_policy_next(DisplayMode::SPECTRUM);
+  CHECK_EQ(t.next, DisplayMode::CLOCK);
+  CHECK_EQ(t.delay_us, MODE_CYCLE_CLOCK_US);
+}
+
 static void test_date_to_clock() {
   SUITE("date_to_clock");
   // Legacy: DATE still falls through to CLOCK
@@ -75,6 +82,7 @@ static void test_timing_constants() {
   CHECK_EQ(MODE_CYCLE_CLOCK_US,    50ULL * 1'000'000ULL);
   CHECK_EQ(MODE_CYCLE_TODAY_US,    10ULL * 1'000'000ULL);
   CHECK_EQ(MODE_CYCLE_FORECAST_US, 10ULL * 1'000'000ULL);
+  CHECK_EQ(MODE_CYCLE_SPECTRUM_US, 10ULL * 1'000'000ULL);
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +92,7 @@ static void test_timing_constants() {
 static void test_custom_dwell_times() {
   SUITE("custom_dwell_times");
   cycle_config cfg;
-  cfg.clock_s = 120; cfg.today_s = 20; cfg.forecast_s = 30;
+  cfg.clock_s = 120; cfg.today_s = 20; cfg.forecast_s = 30; cfg.spectrum_s = 40;
 
   auto t = mode_policy_next(DisplayMode::CLOCK, cfg);
   CHECK_EQ(t.next, DisplayMode::TODAY);
@@ -95,6 +103,10 @@ static void test_custom_dwell_times() {
   CHECK_EQ(t.delay_us, 30ULL * 1'000'000ULL);
 
   t = mode_policy_next(DisplayMode::FORECAST, cfg);
+  CHECK_EQ(t.next, DisplayMode::SPECTRUM);
+  CHECK_EQ(t.delay_us, 40ULL * 1'000'000ULL);
+
+  t = mode_policy_next(DisplayMode::SPECTRUM, cfg);
   CHECK_EQ(t.next, DisplayMode::CLOCK);
   CHECK_EQ(t.delay_us, 120ULL * 1'000'000ULL);
 }
@@ -137,7 +149,8 @@ static void test_skip_both_ambient() {
   SUITE("skip_both_ambient");
   cycle_config cfg;
   cfg.today_s = 0;
-  cfg.forecast_s = 0;  // CLOCK-only cycle
+  cfg.forecast_s = 0;
+  cfg.spectrum_s = 0;  // CLOCK-only cycle
 
   auto t = mode_policy_next(DisplayMode::CLOCK, cfg);
   CHECK_EQ(t.next, DisplayMode::CLOCK);
@@ -174,6 +187,9 @@ static void test_button_cycle_full_round_trip() {
   CHECK_EQ(m.current(), DisplayMode::FORECAST);
 
   m.cycle();
+  CHECK_EQ(m.current(), DisplayMode::SPECTRUM);
+
+  m.cycle();
   CHECK_EQ(m.current(), DisplayMode::CLOCK);
 }
 
@@ -189,6 +205,14 @@ static void test_button_cycle_from_forecast() {
   SUITE("button_cycle_from_forecast");
   ModeManager &m = mm();
   m.set(DisplayMode::FORECAST);
+  m.cycle();
+  CHECK_EQ(m.current(), DisplayMode::SPECTRUM);
+}
+
+static void test_button_cycle_from_spectrum() {
+  SUITE("button_cycle_from_spectrum");
+  ModeManager &m = mm();
+  m.set(DisplayMode::SPECTRUM);
   m.cycle();
   CHECK_EQ(m.current(), DisplayMode::CLOCK);
 }
@@ -263,6 +287,7 @@ static void test_mode_names() {
   CHECK_STREQ(ModeManager::name(DisplayMode::TODAY),    "TODAY");
   CHECK_STREQ(ModeManager::name(DisplayMode::FORECAST), "FORECAST");
   CHECK_STREQ(ModeManager::name(DisplayMode::GAME),     "GAME");
+  CHECK_STREQ(ModeManager::name(DisplayMode::SPECTRUM), "SPECTRUM");
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +329,7 @@ int main() {
   test_clock_to_today();
   test_today_to_forecast();
   test_forecast_to_clock();
+  test_spectrum_to_clock();
   test_date_to_clock();
 
   // mode_policy_next — configurable dwell times
@@ -321,6 +347,7 @@ int main() {
   test_button_cycle_full_round_trip();
   test_button_cycle_from_today();
   test_button_cycle_from_forecast();
+  test_button_cycle_from_spectrum();
   test_button_cycle_from_date();
 
   // ModeManager — reset (long-press)

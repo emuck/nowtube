@@ -153,6 +153,33 @@
               <span>Forecast dwell (s)</span>
               <input id="cycle-forecast-s" name="cycle-forecast-s" type="number" min="0" max="300" step="2" placeholder="0 = skip">
             </label>
+            <label>
+              <span>Spectrum dwell (s)</span>
+              <input id="cycle-spectrum-s" name="cycle-spectrum-s" type="number" min="0" max="300" placeholder="0 = skip">
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <p class="field-group-title">Microphone</p>
+          <div class="config-form">
+            <label class="check-row">
+              <input id="mic-enabled" name="mic-enabled" type="checkbox">
+              <span>Enable Spectrum microphone</span>
+            </label>
+            <label>
+              <span>ADC channel</span>
+              <select id="mic-adc-channel" name="mic-adc-channel">
+                <option value="7">GPIO35 / ADC1_CH7 (default)</option>
+                <option value="0">GPIO36 / ADC1_CH0</option>
+                <option value="1">GPIO37 / ADC1_CH1</option>
+                <option value="2">GPIO38 / ADC1_CH2</option>
+                <option value="3">GPIO39 / ADC1_CH3</option>
+                <option value="4">GPIO32 / ADC1_CH4</option>
+                <option value="5">GPIO33 / ADC1_CH5</option>
+                <option value="6">GPIO34 / ADC1_CH6</option>
+              </select>
+            </label>
           </div>
         </div>
 
@@ -200,6 +227,7 @@
       <h2>Actions</h2>
       <div class="actions">
         <button id="weather-refresh-btn" type="button" class="btn-secondary">Refresh Weather</button>
+        <a href="/panels" class="btn-secondary">Panel Data</a>
         <button id="reboot-btn" type="button" class="btn-danger">Reboot Device</button>
         <p id="action-result" class="save-result"></p>
       </div>

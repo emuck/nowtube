@@ -149,6 +149,7 @@ static void test_boot_mode_validation() {
   CHECK(config_validate_mode(DisplayMode::DATE)     == DisplayMode::CLOCK);
   CHECK(config_validate_mode(DisplayMode::TODAY)    == DisplayMode::TODAY);
   CHECK(config_validate_mode(DisplayMode::FORECAST) == DisplayMode::FORECAST);
+  CHECK(config_validate_mode(DisplayMode::SPECTRUM) == DisplayMode::SPECTRUM);
   // Old WEATHER value (1) is no longer a valid mode — must clamp to CLOCK
   CHECK(config_validate_mode(static_cast<DisplayMode>(1)) == DisplayMode::CLOCK);
   // Values outside the enum must clamp to CLOCK

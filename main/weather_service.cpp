@@ -22,7 +22,7 @@
 
 static const char *TAG = "weather";
 
-static constexpr size_t RESPONSE_BUF_SIZE = 4096;
+static constexpr size_t RESPONSE_BUF_SIZE = 24576;
 static constexpr size_t URL_BUF_SIZE      = 384;
 
 static constexpr uint8_t  REFRESH_MIN_MINUTES = 5;
@@ -49,6 +49,97 @@ static char                  s_last_error[80]    = "none";
 static int                   s_fail_count        = 0;
 static int                   s_success_count     = 0;
 static SemaphoreHandle_t     s_config_mutex      = nullptr;
+
+
+static bool is_nws_supported_location(double lat, double lon) {
+    // NWS covers the United States and territories. Keep this broad enough for
+    // Alaska/Hawaii while excluding non-US Open-Meteo locations.
+    return lat >= 18.0 && lat <= 72.0 && lon >= -180.0 && lon <= -65.0;
+}
+
+static bool http_get_to_buffer(const char *url, char *buf, size_t buf_size,
+                               const char *user_agent,
+                               int *status_out, int *bytes_out) {
+    if (!url || !buf || buf_size == 0) return false;
+    esp_http_client_config_t cfg = {};
+    cfg.url = url;
+    cfg.timeout_ms = 10000;
+    cfg.crt_bundle_attach = esp_crt_bundle_attach;
+
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    if (!client) return false;
+    if (user_agent && user_agent[0] != '\0') {
+        esp_http_client_set_header(client, "User-Agent", user_agent);
+    }
+
+    esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+        esp_http_client_cleanup(client);
+        return false;
+    }
+    esp_http_client_fetch_headers(client);
+
+    int total = 0;
+    int n = 0;
+    while (total < static_cast<int>(buf_size) - 1 &&
+           (n = esp_http_client_read(client, buf + total, buf_size - 1 - total)) > 0) {
+        total += n;
+    }
+    buf[total] = '\0';
+    int status = esp_http_client_get_status_code(client);
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+
+    if (status_out) *status_out = status;
+    if (bytes_out) *bytes_out = total;
+    return status == 200 && total > 0;
+}
+
+static bool try_nws_forecast(double lat, double lon, const char *temp_unit_chr,
+                             forecast_data &forecast) {
+    if (!is_nws_supported_location(lat, lon)) return false;
+
+    char points_url[URL_BUF_SIZE];
+    if (!nws_points_build_url(points_url, sizeof(points_url), lat, lon)) return false;
+
+    char *buf = static_cast<char *>(malloc(RESPONSE_BUF_SIZE));
+    if (!buf) return false;
+
+    int status = 0;
+    int bytes = 0;
+    constexpr const char *USER_AGENT = "nowtube/0.6 local weather display";
+    if (!http_get_to_buffer(points_url, buf, RESPONSE_BUF_SIZE, USER_AGENT, &status, &bytes)) {
+        ESP_LOGW(TAG, "NWS points fetch failed: HTTP %d, %d bytes", status, bytes);
+        free(buf);
+        return false;
+    }
+
+    char forecast_url[URL_BUF_SIZE];
+    if (!nws_parse_points_response(buf, static_cast<size_t>(bytes), forecast_url, sizeof(forecast_url))) {
+        ESP_LOGW(TAG, "NWS points response missing forecast URL");
+        free(buf);
+        return false;
+    }
+
+    if (!http_get_to_buffer(forecast_url, buf, RESPONSE_BUF_SIZE, USER_AGENT, &status, &bytes)) {
+        ESP_LOGW(TAG, "NWS forecast fetch failed: HTTP %d, %d bytes", status, bytes);
+        free(buf);
+        return false;
+    }
+
+    forecast_data nws_forecast;
+    WeatherParseStatus parsed = nws_parse_forecast_response(buf, static_cast<size_t>(bytes),
+                                                            temp_unit_chr, nws_forecast);
+    free(buf);
+    if (parsed != WeatherParseStatus::OK) {
+        ESP_LOGW(TAG, "NWS forecast parse failed: %d", static_cast<int>(parsed));
+        return false;
+    }
+
+    forecast = nws_forecast;
+    ESP_LOGI(TAG, "NWS forecast override applied: [0] hi=%d lo=%d", forecast.days[0].high, forecast.days[0].low);
+    return true;
+}
 
 // ---------------------------------------------------------------------------
 // Config
@@ -111,6 +202,7 @@ static void fetch_task([[maybe_unused]] void *arg) {
     fetch_aqi = s_fetch_aqi;
     if (s_config_mutex) xSemaphoreGive(s_config_mutex);
 
+    vTaskDelay(pdMS_TO_TICKS(5000));
     ESP_LOGI(TAG, "Weather fetch starting");
 #define FETCH_FAIL(fmt, ...) do { \
         snprintf(s_last_error, sizeof(s_last_error), fmt, ##__VA_ARGS__); \
@@ -195,6 +287,11 @@ static void fetch_task([[maybe_unused]] void *arg) {
         return;
     case WeatherParseStatus::OK:
         break;
+    }
+
+    bool nws_ok = try_nws_forecast(lat, lon, temp_unit_chr, result.forecast);
+    if (!nws_ok && is_nws_supported_location(lat, lon)) {
+        ESP_LOGW(TAG, "Using Open-Meteo forecast fallback for US location");
     }
 
     // Optional AQI fetch — only when panel_humidity_metric == "aqi".

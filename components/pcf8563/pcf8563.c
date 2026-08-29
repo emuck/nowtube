@@ -46,6 +46,23 @@ static inline uint8_t bcd2decimal(uint8_t bcd)
    return (((bcd >> 4) * 10) + (bcd & 0x0f));
 }
 
+static uint8_t is_leap_year(uint16_t year)
+{
+    return ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
+}
+
+static uint16_t day_of_year(uint16_t year, uint8_t month, uint8_t day)
+{
+    static const uint16_t days_before_month[] = {
+        0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+    };
+    uint16_t yday = days_before_month[month] + day - 1;
+    if (month > 1 && is_leap_year(year)) {
+        yday++;
+    }
+    return yday;
+}
+
 pcf8563_err_t pcf8563_init(const pcf8563_t *pcf)
 {
     uint8_t clear = 0x00;
@@ -104,8 +121,10 @@ pcf8563_err_t pcf8563_read(const pcf8563_t *pcf, struct tm *time)
     bcd = data[6] & 0b11111111;
     time->tm_year = bcd2decimal(bcd) + century;
 
-    /* Calculate tm_yday. */
-    mktime(time);
+    /* This project stores the RTC in UTC. Avoid mktime(), which interprets
+       the decoded fields in the local timezone and can shift them at DST. */
+    time->tm_yday = day_of_year(time->tm_year + 1900, time->tm_mon, time->tm_mday);
+    time->tm_isdst = 0;
 
     /* low voltage warning */
     if (data[0] & 0b10000000) {

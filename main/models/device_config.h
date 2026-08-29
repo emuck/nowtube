@@ -32,9 +32,13 @@ struct device_config {
   uint16_t cycle_clock_s    = 50;
   uint16_t cycle_today_s    = 10;
   uint16_t cycle_forecast_s = 10;
+  uint16_t cycle_spectrum_s = 0;
 
   ClockFont clock_font = ClockFont::NIXIE;
 
   // Panel 4 (humidity slot in TODAY mode): "humidity" (default) or "aqi".
   char panel_humidity_metric[16] = "humidity";
+
+  bool mic_enabled = true;
+  uint8_t mic_adc_channel = 7;  // ADC1_CH7 = GPIO35, per Nextube-Remaster.
 };

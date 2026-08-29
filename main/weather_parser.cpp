@@ -4,10 +4,13 @@
 #include "weather_parser.h"
 
 #include <cJSON.h>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+
+static int parse_wday(const char *date_str);
 
 // ---------------------------------------------------------------------------
 // URL construction
@@ -37,6 +40,114 @@ bool weather_build_url(char *buf, size_t buf_size,
                      "&timezone=auto",
                      lat, lon, temperature_unit, wind_speed_unit);
     return n > 0 && (size_t)n < buf_size;
+}
+
+
+static bool contains_ci(const char *haystack, const char *needle) {
+    if (!haystack || !needle || needle[0] == '\0') return false;
+    for (const char *h = haystack; *h; ++h) {
+        const char *a = h;
+        const char *b = needle;
+        while (*a && *b &&
+               std::tolower(static_cast<unsigned char>(*a)) ==
+                   std::tolower(static_cast<unsigned char>(*b))) {
+            ++a;
+            ++b;
+        }
+        if (*b == '\0') return true;
+    }
+    return false;
+}
+
+static uint16_t nws_weather_code_from_text(const char *text) {
+    if (!text) return 0;
+    if (contains_ci(text, "thunder")) return 95;
+    if (contains_ci(text, "snow") || contains_ci(text, "sleet") || contains_ci(text, "ice")) return 71;
+    if (contains_ci(text, "rain") || contains_ci(text, "shower") || contains_ci(text, "drizzle")) return 61;
+    if (contains_ci(text, "fog") || contains_ci(text, "haze") || contains_ci(text, "smoke")) return 45;
+    if (contains_ci(text, "partly") || contains_ci(text, "mostly sunny")) return 2;
+    if (contains_ci(text, "cloud" ) || contains_ci(text, "overcast")) return 3;
+    return 0;
+}
+
+static int16_t convert_nws_temp(int value_f, const char *temp_unit_chr) {
+    if (temp_unit_chr && strcmp(temp_unit_chr, "C") == 0) {
+        return static_cast<int16_t>(lround((static_cast<double>(value_f) - 32.0) * 5.0 / 9.0));
+    }
+    return static_cast<int16_t>(value_f);
+}
+
+bool nws_points_build_url(char *buf, size_t buf_size, double lat, double lon) {
+    int n = snprintf(buf, buf_size, "https://api.weather.gov/points/%.4f,%.4f", lat, lon);
+    return n > 0 && static_cast<size_t>(n) < buf_size;
+}
+
+bool nws_parse_points_response(const char *json, size_t json_len, char *forecast_url, size_t forecast_url_size) {
+    if (!json || json_len == 0 || !forecast_url || forecast_url_size == 0) return false;
+    cJSON *root = cJSON_ParseWithLength(json, json_len);
+    if (!root) return false;
+    cJSON *props = cJSON_GetObjectItemCaseSensitive(root, "properties");
+    cJSON *forecast = cJSON_GetObjectItemCaseSensitive(props, "forecast");
+    bool ok = cJSON_IsString(forecast) && forecast->valuestring && forecast->valuestring[0] != '\0';
+    if (ok) snprintf(forecast_url, forecast_url_size, "%s", forecast->valuestring);
+    cJSON_Delete(root);
+    return ok;
+}
+
+WeatherParseStatus nws_parse_forecast_response(const char *json, size_t json_len,
+                                               const char *temp_unit_chr,
+                                               forecast_data &forecast) {
+    forecast = {};
+    if (!json || json_len == 0) return WeatherParseStatus::JSON_PARSE_ERROR;
+    cJSON *root = cJSON_ParseWithLength(json, json_len);
+    if (!root) return WeatherParseStatus::JSON_PARSE_ERROR;
+
+    cJSON *props = cJSON_GetObjectItemCaseSensitive(root, "properties");
+    cJSON *periods = cJSON_GetObjectItemCaseSensitive(props, "periods");
+    if (!cJSON_IsArray(periods)) {
+        cJSON_Delete(root);
+        return WeatherParseStatus::MISSING_DAILY;
+    }
+
+    int out = 0;
+    int n = cJSON_GetArraySize(periods);
+    for (int i = 0; i < n && out < FORECAST_DAYS; ++i) {
+        cJSON *period = cJSON_GetArrayItem(periods, i);
+        cJSON *is_day = cJSON_GetObjectItemCaseSensitive(period, "isDaytime");
+        if (!cJSON_IsBool(is_day) || !cJSON_IsTrue(is_day)) continue;
+
+        cJSON *temp = cJSON_GetObjectItemCaseSensitive(period, "temperature");
+        cJSON *start = cJSON_GetObjectItemCaseSensitive(period, "startTime");
+        if (!cJSON_IsNumber(temp) || !cJSON_IsString(start)) continue;
+
+        forecast_day &day = forecast.days[out];
+        day.high = static_cast<int8_t>(convert_nws_temp(temp->valueint, temp_unit_chr));
+        day.low = day.high;
+        day.wday = 0;
+        int wday = parse_wday(start->valuestring);
+        if (wday >= 0) day.wday = static_cast<uint8_t>(wday);
+
+        cJSON *short_forecast = cJSON_GetObjectItemCaseSensitive(period, "shortForecast");
+        day.weather_code = nws_weather_code_from_text(cJSON_GetStringValue(short_forecast));
+
+        for (int j = i + 1; j < n; ++j) {
+            cJSON *night = cJSON_GetArrayItem(periods, j);
+            cJSON *night_day = cJSON_GetObjectItemCaseSensitive(night, "isDaytime");
+            if (cJSON_IsBool(night_day) && cJSON_IsTrue(night_day)) break;
+            cJSON *night_temp = cJSON_GetObjectItemCaseSensitive(night, "temperature");
+            if (cJSON_IsNumber(night_temp)) {
+                day.low = static_cast<int8_t>(convert_nws_temp(night_temp->valueint, temp_unit_chr));
+                break;
+            }
+        }
+        day.valid = true;
+        ++out;
+    }
+
+    cJSON_Delete(root);
+    forecast.valid = out > 0;
+    forecast.fetched_at = time(nullptr);
+    return forecast.valid ? WeatherParseStatus::OK : WeatherParseStatus::MISSING_FIELDS;
 }
 
 // ---------------------------------------------------------------------------

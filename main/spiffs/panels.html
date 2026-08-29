@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>nowtube panels</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    .mode-block { margin-top: 20px; }
+    .panel-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:10px; }
+    .tube { min-height:150px; border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:10px; background:rgba(0,0,0,.22); display:flex; flex-direction:column; justify-content:space-between; }
+    .tube-index { color:var(--muted); font-size:12px; }
+    .tube-main { font-size:24px; line-height:1.15; white-space:pre-line; overflow-wrap:anywhere; }
+    .tube-sub { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+    .bars { display:flex; align-items:end; gap:5px; height:96px; }
+    .bar { flex:1; min-height:2px; border-radius:3px 3px 0 0; background:#72f06a; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <img src="/logo.png" class="hero-logo" alt="nowtube">
+      <h1>Panel Data</h1>
+      <p class="lede">Data-first preview of what each mode would send to the six tubes.</p>
+    </header>
+    <section class="panel">
+      <div class="toolbar">
+        <button id="refresh" type="button">Refresh</button>
+        <a class="btn-secondary" href="/">Configuration</a>
+        <span id="meta" class="save-result"></span>
+      </div>
+      <div id="modes"></div>
+    </section>
+  </main>
+<script>
+const colors = ["#00d7ff", "#72f06a", "#ffcc33", "#ff4e88"];
+function esc(s){return String(s ?? "").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+function renderPanel(p){
+  let main = "";
+  if (p.bars) {
+    main = `<div class="bars">${p.bars.map((v,i)=>`<span class="bar" style="height:${Math.max(2,Math.round(v*96))}px;background:${colors[i%colors.length]}"></span>`).join("")}</div>`;
+  } else if (p.lines) {
+    main = `<div class="tube-main">${p.lines.map(esc).join("\n")}</div>`;
+  } else {
+    main = `<div class="tube-main">${esc(p.text ?? "")}</div>`;
+  }
+  return `<div class="tube"><div class="tube-index">Panel ${p.index}</div>${main}<div class="tube-sub">${esc(p.kind || "")}${p.icon ? " · " + esc(p.icon) : ""}${p.hidden ? " · hidden" : ""}</div></div>`;
+}
+function render(data){
+  document.getElementById("meta").textContent = `Mode ${data.current_mode} · ${new Date((data.generated_at||0)*1000).toLocaleTimeString()}`;
+  document.getElementById("modes").innerHTML = data.modes.map(m => `
+    <section class="mode-block">
+      <h2>${esc(m.mode)}</h2>
+      <div class="panel-grid">${m.panels.map(renderPanel).join("")}</div>
+    </section>`).join("");
+}
+async function load(){
+  const r = await fetch('/api/panels');
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  render(await r.json());
+}
+document.getElementById('refresh').addEventListener('click', load);
+load();
+setInterval(load, 250);
+</script>
+</body>
+</html>

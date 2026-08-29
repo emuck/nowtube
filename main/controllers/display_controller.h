@@ -18,6 +18,8 @@ void set_mode(DisplayMode mode);
 void cycle_mode();
 void reset_mode();
 DisplayMode current_mode();
+bool get_conditions_snapshot(current_conditions &out);
+bool get_forecast_snapshot(forecast_data &out);
 
 // Called from conditions_service fetch task when fresh data arrives.
 // Refreshes TODAY display if it is currently active.

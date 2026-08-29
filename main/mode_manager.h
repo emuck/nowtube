@@ -8,6 +8,7 @@ enum class DisplayMode {
     TODAY    = 3,
     FORECAST = 4,
     GAME     = 5,  // entered via explicit input only; not in the auto-cycle
+    SPECTRUM = 6,
 };
 
 class ModeManager {
@@ -28,5 +29,5 @@ public:
 
 private:
     ModeManager() = default;
-    DisplayMode mode_{DisplayMode::CLOCK};
+    DisplayMode mode_{DisplayMode::SPECTRUM};
 };

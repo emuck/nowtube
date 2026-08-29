@@ -12,6 +12,7 @@
 #include "drivers/lcds.h"
 #include "gui.h"
 #include "services/config_service.h"
+#include "services/environment_sensor_service.h"
 #include "weather_parser.h"
 
 LV_FONT_DECLARE(space_mono_44)
@@ -189,7 +190,11 @@ static void build_panel_text(int panel, const current_conditions &data, bool use
                 snprintf(buf, buf_size, "--");
             }
         } else {
-            if (data.valid) {
+            environment_sensor_service::reading indoor;
+            if (environment_sensor_service::get(indoor)) {
+                snprintf(buf, buf_size, "%u\n%%",
+                         static_cast<unsigned>(indoor.humidity_pct + 0.5f));
+            } else if (data.valid) {
                 snprintf(buf, buf_size, "%u\n%%", data.humidity);
             } else {
                 snprintf(buf, buf_size, "--");

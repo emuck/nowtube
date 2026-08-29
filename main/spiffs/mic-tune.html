@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nowtube Mic Tuner</title>
+<style>
+:root{color-scheme:dark;--bg:#07090b;--panel:#11161b;--panel2:#0c1116;--line:#27313a;--text:#edf4f8;--muted:#93a3ad;--ok:#72f06a;--warn:#ffcc33;--bad:#ff5d5d;--accent:#00d7ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1180px;margin:0 auto;padding:18px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}h1{font-size:22px;margin:0}.grid{display:grid;grid-template-columns:360px 1fr;gap:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}.section{padding:12px 0;border-top:1px solid #1d262e}.section:first-child{border-top:0;padding-top:0}h2{font-size:13px;margin:0 0 10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}.row{display:flex;gap:8px;flex-wrap:wrap}.stack{display:grid;gap:8px}.btn{border:1px solid var(--line);background:#17212a;color:var(--text);border-radius:6px;padding:9px 11px;cursor:pointer;min-height:38px}.btn:hover{border-color:#3d4d59}.btn:disabled{opacity:.45;cursor:not-allowed}.primary{background:#0d5365;border-color:#147b93}.danger{background:#3a1717;border-color:#733}.small{padding:6px 8px;min-height:30px}label{display:block;color:var(--muted);font-size:12px;margin:11px 0 5px}input[type=range],select{width:100%}select,input,button{font:inherit}.readout{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 0;border-bottom:1px solid #1d262e}.readout:last-child{border-bottom:0}.readout span:first-child{color:var(--muted)}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 9px;background:var(--panel2)}.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.ok .dot{background:var(--ok)}.warn .dot{background:var(--warn)}.bad .dot{background:var(--bad)}canvas{width:100%;height:240px;background:#050708;border:1px solid var(--line);border-radius:6px}.bars{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;height:185px;align-items:end;margin-top:12px}.bar{min-height:2px;border-radius:3px 3px 0 0;background:var(--accent)}.log{height:116px;overflow:auto;background:#050708;border:1px solid var(--line);border-radius:6px;padding:8px;color:var(--muted);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap}.hint{color:var(--muted);font-size:12px;margin-top:8px}.large{font-size:24px;font-weight:800}.audioControls{width:100%;margin-top:8px}@media(max-width:880px){.grid{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Mic Tuner</h1>
+    <div class="row"><span id="connPill" class="pill warn"><span class="dot"></span><span id="connText">connecting</span></span><a href="/panels">Panel Data</a></div>
+  </div>
+  <div class="grid">
+    <section class="panel">
+      <div class="section">
+        <h2>Nowtube</h2>
+        <div class="row"><button id="setSpectrum" class="btn primary">Set Spectrum Mode</button><button id="refresh" class="btn">Refresh</button><button id="captureFrame" class="btn">Capture Frame</button></div>
+        <div class="readout"><span>Mode</span><b id="mode">--</b></div>
+        <div class="readout"><span>Capturing</span><b id="capturing">--</b></div>
+        <div class="readout"><span>Raw ADC</span><b id="raw">--</b></div>
+      </div>
+      <div class="section">
+        <h2>Signal Generator</h2>
+        <div class="row">
+          <button id="enableAudio" class="btn primary">Enable Audio</button>
+          <button id="startTone" class="btn">Start Tone</button>
+          <button id="stopAudio" class="btn danger">Stop</button>
+        </div>
+        <label>Frequency <b id="freqText">1000 Hz</b></label>
+        <input id="freq" type="range" min="80" max="5000" value="1000" step="10">
+        <label>Output Level <b id="gainText">-6 dB</b></label>
+        <input id="gain" type="range" min="-60" max="0" value="-6" step="1">
+        <div class="row" style="margin-top:10px"><button id="sweep" class="btn">Run Sweep</button><button id="click" class="btn">Click Test</button><button id="nativeBeep" class="btn">Native Beep</button></div>
+        <audio id="nativeAudio" class="audioControls" controls></audio>
+        <div class="hint">Native Beep uses the browser's built-in audio element. If that is silent too, the laptop output route or browser tab audio is the problem.</div>
+      </div>
+      <div class="section">
+        <h2>Status</h2>
+        <div class="readout"><span>Audio state</span><b id="audioState">not enabled</b></div>
+        <div class="readout"><span>Browser latency</span><b id="browserLatency">--</b></div>
+        <div class="readout"><span>Mic peak</span><b id="micPeak">--</b></div>
+        <div class="readout"><span>Total power</span><b id="power">--</b></div>
+        <div class="readout"><span>Peak/ref</span><b id="peakRef">--</b></div>
+        <div class="readout"><span>Click latency</span><b id="clickLatency" class="large">--</b></div>
+      </div>
+    </section>
+    <section class="panel stack">
+      <canvas id="chart" width="900" height="240"></canvas>
+      <div id="bars" class="bars"></div>
+      <div id="log" class="log"></div>
+    </section>
+  </div>
+</div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const state = { audio:null, osc:null, gain:null, pollTimer:0, polling:false, hist:[], waitingClick:false, clickAt:0, lastMic:null };
+const colors = ['#00d7ff','#72f06a','#ffcc33','#ff4e88'];
+for (let i=0;i<24;i++){ const b=document.createElement('div'); b.className='bar'; b.style.background=colors[i%4]; $('bars').appendChild(b); }
+function log(msg){ const t=new Date().toLocaleTimeString(); $('log').textContent = `[${t}] ${msg}\n` + $('log').textContent.slice(0,3500); }
+function setConn(kind,text){ $('connPill').className='pill '+kind; $('connText').textContent=text; }
+function dbToGain(db){ return Math.pow(10, db/20); }
+function updateLabels(){ $('freqText').textContent = $('freq').value+' Hz'; $('gainText').textContent = $('gain').value+' dB'; if(state.osc) state.osc.frequency.setTargetAtTime(Number($('freq').value), state.audio.currentTime, .015); if(state.gain) state.gain.gain.setTargetAtTime(dbToGain(Number($('gain').value)), state.audio.currentTime, .015); }
+function audioSummary(){ if(!state.audio) return; const base=Math.round((state.audio.baseLatency||0)*1000); const out=Math.round((state.audio.outputLatency||0)*1000); $('browserLatency').textContent = `base ${base} ms / out ${out} ms`; $('audioState').textContent = state.audio.state; }
+async function ensureAudio(){ if(!state.audio){ const Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) throw new Error('Web Audio is not supported in this browser'); state.audio=new Ctx(); state.audio.onstatechange=audioSummary; } if(state.audio.state !== 'running') await state.audio.resume(); audioSummary(); return state.audio; }
+function stopAudio(){ clearTimeout(state.sweepTimer); if(state.osc){ try{state.osc.stop();}catch(e){} state.osc.disconnect(); state.osc=null; } if(state.gain){ state.gain.disconnect(); state.gain=null; } $('startTone').disabled=false; $('sweep').disabled=false; $('audioState').textContent = state.audio ? state.audio.state+' / stopped' : 'not enabled'; log('audio stopped'); }
+async function enableAudio(){ try{ await ensureAudio(); log('audio enabled'); } catch(e){ $('audioState').textContent='error'; log('audio enable failed: '+e.message); } }
+async function startTone(){ try{ stopAudio(); const ctx=await ensureAudio(); state.osc=ctx.createOscillator(); state.gain=ctx.createGain(); state.osc.type='sine'; state.osc.frequency.value=Number($('freq').value); state.gain.gain.value=dbToGain(Number($('gain').value)); state.osc.connect(state.gain).connect(ctx.destination); state.osc.start(); $('startTone').disabled=true; log(`tone started: ${$('freq').value} Hz at ${$('gain').value} dB`); } catch(e){ log('tone failed: '+e.message); } }
+async function runSweep(){ try{ stopAudio(); const ctx=await ensureAudio(); state.osc=ctx.createOscillator(); state.gain=ctx.createGain(); state.osc.type='sine'; state.gain.gain.value=dbToGain(Number($('gain').value)); state.osc.connect(state.gain).connect(ctx.destination); const now=ctx.currentTime; state.osc.frequency.setValueAtTime(100, now); state.osc.frequency.exponentialRampToValueAtTime(4000, now+6); state.osc.start(now); state.osc.stop(now+6.1); $('sweep').disabled=true; log('sweep started: 100-4000 Hz, 6 s'); state.sweepTimer=setTimeout(stopAudio, 6300); } catch(e){ log('sweep failed: '+e.message); } }
+function makeWavUrl(freq=1000, seconds=1.5, amp=.9){ const rate=44100,n=Math.floor(rate*seconds),bytes=44+n*2,buf=new ArrayBuffer(bytes),v=new DataView(buf); const str=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));}; str(0,'RIFF');v.setUint32(4,bytes-8,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);str(36,'data');v.setUint32(40,n*2,true); for(let i=0;i<n;i++){const fade=Math.min(1,i/500,(n-i)/500),sample=Math.sin(2*Math.PI*freq*i/rate)*amp*fade;v.setInt16(44+i*2,sample*32767,true);} return URL.createObjectURL(new Blob([buf],{type:'audio/wav'})); }
+async function nativeBeep(){ const a=$('nativeAudio'); a.src=makeWavUrl(Number($('freq').value)); a.volume=1; try{ await a.play(); log('native beep playing'); } catch(e){ log('native beep failed: '+e.message); } }
+async function clickTest(){ try{ const ctx=await ensureAudio(); const src=ctx.createBufferSource(); const gain=ctx.createGain(); const len=Math.floor(ctx.sampleRate*.025); const buf=ctx.createBuffer(1,len,ctx.sampleRate); const data=buf.getChannelData(0); for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*(1-i/len); gain.gain.value=dbToGain(Number($('gain').value)); src.buffer=buf; src.connect(gain).connect(ctx.destination); state.waitingClick=true; state.clickAt=performance.now(); $('clickLatency').textContent='waiting'; src.start(); log('click emitted'); } catch(e){ log('click failed: '+e.message); } }
+async function setSpectrum(){ try{ const r=await fetch('/api/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"mode":"SPECTRUM"}'}); if(!r.ok) throw new Error('HTTP '+r.status); log('spectrum mode requested'); await pollOnce(); } catch(e){ log('set spectrum failed: '+e.message); } }
+async function captureFrame(){ try{ const r=await fetch('/api/mic/frame',{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); const d=await r.json(); if(!d.valid){ log('frame unavailable: '+(d.error||'not capturing')); return; } const raw=d.samples||[], dec=d.dec||[]; const pp=a=>a.length ? Math.max(...a)-Math.min(...a) : 0; const rawMin=raw.length?Math.min(...raw):0, rawMax=raw.length?Math.max(...raw):0; const decMin=dec.length?Math.min(...dec):0, decMax=dec.length?Math.max(...dec):0; log(`frame raw ${rawMin}-${rawMax} pp ${pp(raw)}; dec pp ${pp(dec).toFixed(1)} (${d.rate_hz} Hz -> ${d.dec_rate_hz} Hz)`); } catch(e){ log('capture frame failed: '+e.message); } }
+function draw(vals){ const c=$('chart'), g=c.getContext('2d'); g.clearRect(0,0,c.width,c.height); g.strokeStyle='#27313a'; for(let y=0;y<=4;y++){g.beginPath();g.moveTo(0,y*c.height/4);g.lineTo(c.width,y*c.height/4);g.stroke();} state.hist.push(Math.max(0,...vals)); if(state.hist.length>180) state.hist.shift(); g.strokeStyle='#00d7ff'; g.beginPath(); state.hist.forEach((v,i)=>{ const x=i*c.width/179, y=c.height-Math.min(1,v)*c.height; if(i)g.lineTo(x,y); else g.moveTo(x,y); }); g.stroke(); }
+async function pollOnce(){ if(state.polling) return; state.polling=true; try{ const r=await fetch('/api/mic',{cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); const d=await r.json(); state.lastMic=d; const vals=d.bands||[]; vals.forEach((v,i)=>{ $('bars').children[i].style.height=Math.max(2,Math.round(Math.min(1,v)*185))+'px'; }); const max=Math.max(0,...vals); $('mode').textContent=d.mode; $('capturing').textContent=d.capturing?'yes':'no'; $('raw').textContent=(d.raw_min !== undefined) ? `${d.raw_min}-${d.raw_max} pp ${d.raw_pp} last ${d.raw}` : d.raw; $('micPeak').textContent=max.toFixed(3); $('power').textContent=(d.total_power||0).toFixed(2); $('peakRef').textContent=(d.frame_peak||0).toFixed(2)+' / '+(d.level_ref||0).toFixed(2); draw(vals); setConn('ok','connected'); if(state.waitingClick && max>.12){ $('clickLatency').textContent=Math.round(performance.now()-state.clickAt)+' ms'; state.waitingClick=false; } } catch(e){ setConn('bad','offline'); log('poll failed: '+e.message); } finally{ state.polling=false; } }
+function startPolling(){ clearInterval(state.pollTimer); pollOnce(); state.pollTimer=setInterval(pollOnce,120); }
+$('enableAudio').addEventListener('click', enableAudio);
+$('startTone').addEventListener('click', startTone);
+$('stopAudio').addEventListener('click', stopAudio);
+$('sweep').addEventListener('click', runSweep);
+$('click').addEventListener('click', clickTest);
+$('nativeBeep').addEventListener('click', nativeBeep);
+$('setSpectrum').addEventListener('click', setSpectrum);
+$('refresh').addEventListener('click', pollOnce);
+$('captureFrame').addEventListener('click', captureFrame);
+$('freq').addEventListener('input', updateLabels);
+$('gain').addEventListener('input', updateLabels);
+window.addEventListener('pagehide', stopAudio);
+updateLabels(); startPolling(); log('mic tuner ready');
+</script>
+</body>
+</html>

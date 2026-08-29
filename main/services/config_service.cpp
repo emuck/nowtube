@@ -43,8 +43,11 @@ static bool save_locked() {
   err |= nvs_set_u16(h, "cyc_clk",    s_config.cycle_clock_s);
   err |= nvs_set_u16(h, "cyc_tod",    s_config.cycle_today_s);
   err |= nvs_set_u16(h, "cyc_fcst",   s_config.cycle_forecast_s);
+  err |= nvs_set_u16(h, "cyc_spec",   s_config.cycle_spectrum_s);
   err |= nvs_set_u8 (h, "clock_font", static_cast<uint8_t>(s_config.clock_font));
   err |= nvs_set_str(h, "hum_metric", s_config.panel_humidity_metric);
+  err |= nvs_set_u8 (h, "mic_en",     s_config.mic_enabled ? 1 : 0);
+  err |= nvs_set_u8 (h, "mic_ch",     s_config.mic_adc_channel);
   if (err == ESP_OK) {
     err = nvs_commit(h);
   }
@@ -104,12 +107,19 @@ static bool load_from_nvs() {
   nvs_get_u16(h, "cyc_clk",  &s_config.cycle_clock_s);
   nvs_get_u16(h, "cyc_tod",  &s_config.cycle_today_s);
   nvs_get_u16(h, "cyc_fcst", &s_config.cycle_forecast_s);
+  nvs_get_u16(h, "cyc_spec", &s_config.cycle_spectrum_s);
   {
     uint8_t clock_font = static_cast<uint8_t>(s_config.clock_font);
     nvs_get_u8(h, "clock_font", &clock_font);
     s_config.clock_font = static_cast<ClockFont>(clock_font);
   }
   load_string(h, "hum_metric", s_config.panel_humidity_metric, sizeof(s_config.panel_humidity_metric));
+  {
+    uint8_t mic_enabled = s_config.mic_enabled ? 1 : 0;
+    nvs_get_u8(h, "mic_en", &mic_enabled);
+    s_config.mic_enabled = mic_enabled != 0;
+    nvs_get_u8(h, "mic_ch", &s_config.mic_adc_channel);
+  }
   nvs_close(h);
 
   config_validate(s_config);

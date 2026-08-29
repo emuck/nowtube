@@ -10,10 +10,12 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/portmacro.h>
 #include <freertos/semphr.h>
+#include <freertos/task.h>
 
 #include "displays/clock/clock.h"
 #include "displays/forecast/forecast_display.h"
 #include "displays/game/game_display.h"
+#include "displays/spectrum/spectrum_display.h"
 #include "displays/today/today_display.h"
 #include "gui.h"
 #include "services/status_service.h"
@@ -33,8 +35,20 @@ static SemaphoreHandle_t s_forecast_mutex = nullptr;
 // Set to true when the Wi-Fi recovery AP is active.  Blocks all further
 // clock/weather/date rendering so the recovery screen stays visible.
 static bool s_recovery_active = false;
+static TaskHandle_t s_spectrum_task = nullptr;
 
 // ---------------------------------------------------------------------------
+
+static void spectrum_refresh_task([[maybe_unused]] void *arg) {
+  for (;;) {
+    if (!s_recovery_active && ModeManager::get().current() == DisplayMode::SPECTRUM) {
+      gui_lvgl_lock();
+      spectrum_display::refresh();
+      gui_lvgl_unlock();
+    }
+    vTaskDelay(pdMS_TO_TICKS(33));
+  }
+}
 
 void init() {
   s_conditions_mutex = xSemaphoreCreateMutex();
@@ -46,6 +60,9 @@ void init() {
     ESP_LOGE(TAG, "Failed to create forecast mutex");
   }
   status_service::set_mode(ModeManager::name(ModeManager::get().current()));
+  if (s_spectrum_task == nullptr) {
+    xTaskCreate(spectrum_refresh_task, "spectrum_ui", 4096, nullptr, 2, &s_spectrum_task);
+  }
   ESP_LOGI(TAG, "Display controller initialized");
 }
 
@@ -135,6 +152,9 @@ void apply_mode(DisplayMode mode) {
   if (mode != DisplayMode::GAME) {
     game_display::clear();
   }
+  if (mode != DisplayMode::SPECTRUM) {
+    spectrum_display::clear();
+  }
   switch (mode) {
   case DisplayMode::CLOCK:
     clock::get().update();
@@ -150,6 +170,9 @@ void apply_mode(DisplayMode mode) {
     break;
   case DisplayMode::GAME:
     game_display::show();
+    break;
+  case DisplayMode::SPECTRUM:
+    spectrum_display::show();
     break;
   }
   gui_lvgl_unlock();
@@ -174,12 +197,30 @@ DisplayMode current_mode() {
   return ModeManager::get().current();
 }
 
+bool get_conditions_snapshot(current_conditions &out) {
+  conditions_lock();
+  out = s_conditions;
+  conditions_unlock();
+  return out.valid;
+}
+
+bool get_forecast_snapshot(forecast_data &out) {
+  forecast_lock();
+  out = s_forecast;
+  forecast_unlock();
+  return out.valid;
+}
+
 void on_conditions_updated(const current_conditions &data) {
   if (s_recovery_active) return;
 
   conditions_lock();
   s_conditions = data;
   conditions_unlock();
+
+  if (ModeManager::get().current() == DisplayMode::SPECTRUM) {
+    return;
+  }
 
   gui_lvgl_lock();
   // Always keep the clock's temperature, weather icon, and sun times current.
@@ -215,7 +256,8 @@ void on_forecast_updated(const forecast_data &data) {
 
 void on_time_changed() {
   if (s_recovery_active) return;
-  if (ModeManager::get().current() == DisplayMode::GAME) return;
+  if (ModeManager::get().current() == DisplayMode::GAME ||
+      ModeManager::get().current() == DisplayMode::SPECTRUM) return;
   gui_lvgl_lock();
   clock::get().update();
   gui_lvgl_unlock();
@@ -223,7 +265,8 @@ void on_time_changed() {
 
 void on_time_loaded() {
   if (s_recovery_active) return;
-  if (ModeManager::get().current() == DisplayMode::GAME) return;
+  if (ModeManager::get().current() == DisplayMode::GAME ||
+      ModeManager::get().current() == DisplayMode::SPECTRUM) return;
   gui_lvgl_lock();
   clock::get().update();
   gui_lvgl_unlock();

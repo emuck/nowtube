@@ -18,6 +18,7 @@
 static constexpr uint64_t MODE_CYCLE_CLOCK_US    = 50ULL * 1'000'000ULL;
 static constexpr uint64_t MODE_CYCLE_TODAY_US    = 10ULL * 1'000'000ULL;
 static constexpr uint64_t MODE_CYCLE_FORECAST_US = 10ULL * 1'000'000ULL;
+static constexpr uint64_t MODE_CYCLE_SPECTRUM_US = 10ULL * 1'000'000ULL;
 // ---------------------------------------------------------------------------
 // Cycle configuration (pure; no ESP-IDF deps; extracted from device_config)
 
@@ -25,6 +26,7 @@ struct cycle_config {
   uint16_t clock_s    = 50;  // CLOCK dwell in seconds
   uint16_t today_s    = 10;  // TODAY dwell; 0 = skip TODAY in cycle
   uint16_t forecast_s = 10;  // FORECAST dwell; 0 = skip FORECAST in cycle
+  uint16_t spectrum_s = 0;   // SPECTRUM dwell; 0 = skip SPECTRUM in cycle
 };
 
 // ---------------------------------------------------------------------------
@@ -39,8 +41,8 @@ struct mode_transition {
 // and how long to stay in it (delay_us).
 //
 // Skip rules:
-//   CLOCK    → TODAY (if enabled) → FORECAST (if enabled) → CLOCK
-//   Disabled modes are skipped; if both TODAY and FORECAST are disabled,
+//   CLOCK -> TODAY (if enabled) -> FORECAST (if enabled) -> SPECTRUM (if enabled) -> CLOCK
+//   Disabled modes are skipped; if all optional modes are disabled,
 //   the cycle stays on CLOCK.
 //
 // |cfg| defaults to the factory defaults so call-sites not yet updated compile.

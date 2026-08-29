@@ -25,7 +25,7 @@ Compiled from open source reverse engineering + stock firmware binary analysis +
 | 27 | LCD Reset | Shared across all 6 displays |
 | 32 | WS2812 LED data | RMT peripheral |
 | 33 | LCD1 CS | |
-| 34–39 | **Unknown / candidate** | Input-only pins — I2S mic candidates |
+| 34–39 | **Unknown / candidate** | Input-only pins — GPIO35 / ADC1_CH7 is the onboard microphone input |
 
 GPIO 16/17 are used for PSRAM on ESP32-WROVER-E — do not use.
 
@@ -81,16 +81,14 @@ GPIO 16/17 are used for PSRAM on ESP32-WROVER-E — do not use.
   - Confirm with multimeter: Pin 1 should read ~0 V when board is powered
   - If confirmed, no firmware GPIO action is needed to enable the amp
 - **BYPASS cap (Pin 2):** External 1 µF capacitor required for VDD/2 reference and pop suppression; adds ~100–150 ms soft-start delay after amp enable
-- **Microphone:** I2S interface — confirmed working in stock firmware (spectrum analyzer mode); **mic GPIO pins are not yet identified**
-- **Mic GPIO:** Unknown — candidates are GPIO34, GPIO35, GPIO36, GPIO39 (input-only); standard I2S 3-wire (Phase 3) not yet attempted
-- **Custom firmware status:** No audio implemented. Speaker output is unblocked (GPIO25 free, DAC1 available) pending SHUTDOWN GPIO identification. Microphone remains blocked.
+- **Microphone:** analog electret capsule with LMV321 preamp on GPIO35 / ADC1_CH7, per Nextube-Remaster reverse engineering.
+- **Mic GPIO:** GPIO35 / ADC1_CH7 is the default input; other ADC1 channels remain selectable from the web UI for diagnostics.
+- **Custom firmware status:** speaker output is implemented on GPIO25 / DAC1 for game sounds. Microphone input is implemented for Spectrum mode using ADC continuous sampling.
 
 ## "Indoor" Sensor
 
 The stock firmware config includes `"Indoor"` in the info display list, suggesting an
-onboard or I2C-connected temperature/humidity sensor. This has not been identified.
-The I2C bus (GPIO22/23) also carries the RTC — a second I2C device could share the bus.
-**Candidates:** SHT30, SHT31, AHT10, or similar common I2C temp/humidity ICs.
+onboard I2C SHT30-compatible temperature/humidity sensor at address 0x44, sharing the GPIO22/23 bus with the RTC. Firmware probes it at boot and treats it as optional.
 
 ## PSRAM
 

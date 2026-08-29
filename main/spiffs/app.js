@@ -44,6 +44,7 @@ async function loadStatus() {
   const okCount   = w.fetch_ok   ?? 0;
   const lastErr   = w.last_error;
   const version   = b.version ?? s.firmware ?? "unknown";
+  const env       = s.environment ?? {};
   const gitSha    = b.git_sha ?? "unknown";
   const assetRev  = b.asset_rev ?? "unknown";
   const buildTime = b.build_time_utc ?? "unknown";
@@ -68,6 +69,7 @@ async function loadStatus() {
     statusRow("Wi-Fi",     wifiVal, wifiCls),
     statusRow("Weather",   weatherVal, w.available ? "ok" : "warn"),
     statusRow("Fetches",   fetchVal),
+    statusRow("Indoor",    env.valid ? `${env.temp_c.toFixed(1)}°C &middot; ${env.humidity_pct.toFixed(0)}% RH` : (env.present ? "Waiting for first read" : "Not detected"), env.valid ? "ok" : "warn"),
   ];
   if (!w.available && lastErr && lastErr !== "ok" && lastErr !== "none") {
     rows.push(statusRow("Last error", lastErr, "error"));
@@ -116,6 +118,9 @@ async function loadConfig() {
   setValue("cycle-clock-s",    config.display?.cycle?.clock_s);
   setValue("cycle-today-s",    config.display?.cycle?.today_s);
   setValue("cycle-forecast-s", config.display?.cycle?.forecast_s);
+  setValue("cycle-spectrum-s", config.display?.cycle?.spectrum_s);
+  setChecked("mic-enabled", config.display?.microphone?.enabled ?? true);
+  setValue("mic-adc-channel", config.display?.microphone?.adc_channel ?? 7);
 
   document.getElementById("wifi-psk").placeholder =
     config.wifi?.has_psk ? "Stored in device; leave blank to keep" : "Set Wi-Fi password";
@@ -142,6 +147,11 @@ async function saveConfig(event) {
         clock_s:    Number(document.getElementById("cycle-clock-s").value),
         today_s:    Number(document.getElementById("cycle-today-s").value),
         forecast_s: Number(document.getElementById("cycle-forecast-s").value),
+        spectrum_s: Number(document.getElementById("cycle-spectrum-s").value),
+      },
+      microphone: {
+        enabled: document.getElementById("mic-enabled").checked,
+        adc_channel: Number(document.getElementById("mic-adc-channel").value),
       },
     },
   };

@@ -20,8 +20,6 @@ The ESP32 is the sole controller. Business logic, weather fetching, configuratio
 
 - Raspberry Pi orchestration layer
 - Volumio or music integration
-- Spectrum analyzer (I2S microphone pins unconfirmed; mic may not be populated on rev 1.31)
-- Note: speaker output (LTK8002D amp, DAC1/GPIO25) IS present and feasible (used by Tube Invaders game sounds)
 - YouTube / social subscriber counters
 - Pomodoro timer, countdown timer, or alarm clock
 - Album / image slideshow
