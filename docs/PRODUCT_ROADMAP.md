@@ -97,6 +97,30 @@ too limiting.
    reproducible source, fixed 80×160/asset dimensions, alpha rules, and a
    device screenshot review.
 
+### R2.5 — Browser Look Studio
+
+**Goal:** Make visual choices reviewable before a firmware build or device
+flash.
+
+1. Build a local browser preview that renders six 80×162 virtual tubes with
+   the real physical gaps and a scaled desktop view.
+2. Render the same semantic content as CLOCK, TODAY, and FORECAST using a
+   shared preview data fixture: time, weather state, temperatures, wind,
+   humidity/AQI, and sun event.
+3. Let a reviewer switch among curated fonts, Looks, icon packs, brightness,
+   and representative day/night states without changing device configuration.
+4. Use the original approved TTF/WOFF files for quick browser previews and the
+   same source PNG assets intended for SPIFFS. The final approval remains a
+   screenshot from the compiled LVGL/device build; browser and device raster
+   output will not be assumed pixel-identical.
+5. Keep it static and local at first—no ESP32 emulator, Wi-Fi simulator, or
+   duplicated firmware business logic. Its job is art direction, not hardware
+   validation.
+
+**Why it comes early:** it gives font and icon choices an immediate review
+loop, and it becomes the contact-sheet/visual-regression surface for every
+future Look.
+
 ### R3 — Simple release bundles and asset safety
 
 **Goal:** Borrow the remaster's good update ergonomics without its online
@@ -177,8 +201,9 @@ novelty.
 ## Suggested execution order
 
 1. R1 font-pack/manifest foundation.
-2. R2 default Look and semantic icon manifest.
-3. R3 release-bundle/update safety.
-4. R4 first ambient refinement.
-5. R5 game launcher, then one additional game.
-6. R6 reliability work continuously, with microphone remaining parked.
+2. R2.5 Browser Look Studio, initially for the curated font pack.
+3. R2 default Look and semantic icon manifest.
+4. R3 release-bundle/update safety.
+5. R4 first ambient refinement.
+6. R5 game launcher, then one additional game.
+7. R6 reliability work continuously, with microphone remaining parked.
