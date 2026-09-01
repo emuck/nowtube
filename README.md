@@ -79,6 +79,7 @@ Browser (local)
 
 See [docs/user-guide.md](docs/user-guide.md) for the full user guide (setup, modes, buttons, OTA, fonts, recovery).
 See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) for full detail on each project.
+See [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) for the focused product direction and next priorities.
 
 ### Hardware Validation
 
