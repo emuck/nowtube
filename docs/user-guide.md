@@ -238,6 +238,10 @@ to join that network—no physical reboot is needed. If it cannot connect within
 30 seconds, it returns to `nowtube-setup` and shows the setup instructions
 again.
 
+Your phone will briefly lose its `nowtube-setup` connection during that
+restart. That is expected; reconnect it to the home network rather than
+treating the browser's temporary connection error as a failed save.
+
 The normal clock shows a small amber Wi-Fi symbol while disconnected. The
 manual recovery control remains available for intentionally changing networks.
 The ESP32 requires a 2.4 GHz network; WPA2 or WPA2/WPA3 mixed mode is
