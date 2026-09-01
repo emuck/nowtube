@@ -4,6 +4,25 @@ Developer utilities for the nowtube project.
 
 ---
 
+## look-studio — Browser design review
+
+Starts a no-install local preview of the curated Nowtube clock fonts, six-panel
+layout, brightness, and approved artwork. It is separate from the device UI
+and never alters a connected Nowtube.
+
+```bash
+# macOS / Linux
+python3 tools/look-studio/serve.py
+
+# Windows
+py tools\look-studio\serve.py
+```
+
+The full cross-platform instructions, including how to stop it and use another
+port, are in [look-studio/README.md](look-studio/README.md).
+
+---
+
 ## font_convert.py — Google Font → LVGL converter
 
 Fetches a Google Font, converts it to the LVGL `.c` format used by the ESP32
