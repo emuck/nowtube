@@ -6,6 +6,8 @@ async function fetchJson(url, options) {
   return response.json();
 }
 
+let savedWifiSsid = "";
+
 function setValue(id, value) {
   const el = document.getElementById(id);
   if (el) {
@@ -127,6 +129,7 @@ async function loadConfig() {
   const config = await fetchJson("/api/config");
   setTimezone(config.timezone);
   setValue("wifi-ssid", config.wifi?.ssid);
+  savedWifiSsid = config.wifi?.ssid ?? "";
   setValue("weather-units", config.weather?.units);
   setValue("weather-lat", config.weather?.lat);
   setValue("weather-lon", config.weather?.lon);
@@ -169,7 +172,9 @@ async function saveConfig(event) {
     },
   };
 
+  const wifiSsid = document.getElementById("wifi-ssid").value;
   const wifiPsk = document.getElementById("wifi-psk").value;
+  const wifiWillRestart = wifiPsk !== "" || wifiSsid !== savedWifiSsid;
   if (wifiPsk) {
     payload.wifi.psk = wifiPsk;
   }
@@ -180,14 +185,28 @@ async function saveConfig(event) {
     delete payload.weather.lon;
   }
 
-  const result = await fetchJson("/api/config", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let result;
+  try {
+    result = await fetchJson("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    // The setup AP deliberately vanishes during a successful Wi-Fi restart.
+    // A browser can report that as a network failure before it receives the
+    // acknowledgement, so give the user the useful next step instead.
+    if (wifiWillRestart) {
+      document.getElementById("save-result").textContent =
+        "Credentials sent. Nowtube is restarting; reconnect your phone to home Wi-Fi.";
+      document.getElementById("wifi-psk").value = "";
+      return;
+    }
+    throw error;
+  }
 
   document.getElementById("save-result").textContent = result.restarting
-    ? "Saved. Restarting to join Wi-Fi…"
+    ? "Saved. Restarting to join Wi-Fi; reconnect your phone to home Wi-Fi…"
     : "Saved.";
   document.getElementById("wifi-psk").value = "";
   if (result.restarting) return;

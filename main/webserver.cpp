@@ -390,7 +390,9 @@ static auto config_post_handler(httpd_req_t *req) -> esp_err_t {
   // flushes, rather than making setup depend on a separate physical reboot.
   if (wifi_changed) {
     send_json(req, "{\"status\":\"ok\",\"restarting\":true}");
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // Mobile browsers on the recovery AP need a moment to receive the JSON
+    // acknowledgement before the AP disappears during restart.
+    vTaskDelay(pdMS_TO_TICKS(1500));
     esp_restart();
     return ESP_OK;
   }
