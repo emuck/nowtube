@@ -180,14 +180,17 @@ async function saveConfig(event) {
     delete payload.weather.lon;
   }
 
-  await fetchJson("/api/config", {
+  const result = await fetchJson("/api/config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  document.getElementById("save-result").textContent = "Saved.";
+  document.getElementById("save-result").textContent = result.restarting
+    ? "Saved. Restarting to join Wi-Fi…"
+    : "Saved.";
   document.getElementById("wifi-psk").value = "";
+  if (result.restarting) return;
   await loadStatus();
   await loadConfig();
 }

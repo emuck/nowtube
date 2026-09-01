@@ -84,6 +84,13 @@ void render_boot_screen() {
   gui_lvgl_unlock();
 }
 
+void set_wifi_connected(bool connected) {
+  if (s_recovery_active) return;
+  gui_lvgl_lock();
+  clock::get().set_wifi_connected(connected);
+  gui_lvgl_unlock();
+}
+
 void reload_clock_theme() {
   if (s_recovery_active) return;
   gui_lvgl_lock();

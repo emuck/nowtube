@@ -8,20 +8,37 @@
 #include <cstring>
 #include <esp_log.h>
 #include <esp_netif.h>
+#include <esp_timer.h>
 #include <esp_wifi.h>
 
 #include "services/status_service.h"
 
-#define RETRY_LIMIT UINT_MAX
+static constexpr unsigned int RETRY_LIMIT = UINT_MAX;
+static constexpr uint64_t CONNECT_TIMEOUT_US = 30ULL * 1000ULL * 1000ULL;
 
 static const char *const TAG = "wifi";
-static wifi_connected_callback_t s_wifi_connected_callback = nullptr;
+static wifi_connection_callback_t s_wifi_connection_callback = nullptr;
+static wifi_recovery_callback_t s_wifi_recovery_callback = nullptr;
 static bool s_sta_started    = false;
 static bool s_ap_netif_created = false;
+static bool s_station_connected = false;
+static esp_timer_handle_t s_connect_timeout_timer = nullptr;
 
 static constexpr const char *RECOVERY_AP_SSID = "nowtube-setup";
 static constexpr const char *RECOVERY_AP_IP   = "192.168.4.1";
 static bool s_recovery_mode = false;  // suppresses STA reconnect during AP transition
+
+static void stop_connect_timeout() {
+  if (s_connect_timeout_timer != nullptr) {
+    esp_timer_stop(s_connect_timeout_timer);  // harmless when already stopped
+  }
+}
+
+static void start_connect_timeout() {
+  if (s_connect_timeout_timer == nullptr) return;
+  stop_connect_timeout();
+  ESP_ERROR_CHECK(esp_timer_start_once(s_connect_timeout_timer, CONNECT_TIMEOUT_US));
+}
 
 static void event_handler([[maybe_unused]] void *arg,
                           esp_event_base_t event_base, int32_t event_id,
@@ -33,7 +50,11 @@ static void event_handler([[maybe_unused]] void *arg,
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
     auto *disc = static_cast<wifi_event_sta_disconnected_t *>(event_data);
+    s_station_connected = false;
     status_service::set_wifi(false, "");
+    if (s_wifi_connection_callback != nullptr) {
+      s_wifi_connection_callback(false);
+    }
     if (s_recovery_mode) {
       ESP_LOGI(TAG, "WiFi disconnected (reason=%d) — recovery mode, not reconnecting", disc->reason);
     } else if (s_retry_num < RETRY_LIMIT) {
@@ -51,25 +72,44 @@ static void event_handler([[maybe_unused]] void *arg,
     char ip[16];
     snprintf(ip, sizeof(ip), IPSTR, IP2STR(&event->ip_info.ip));
     status_service::set_wifi(true, ip);
+    s_station_connected = true;
+    stop_connect_timeout();
     s_retry_num = 0;
     status_service::set_wifi_retry_count(0);
 
-    if (s_wifi_connected_callback != nullptr) {
-      s_wifi_connected_callback();
+    if (s_wifi_connection_callback != nullptr) {
+      s_wifi_connection_callback(true);
     }
   }
 }
 
-void wifi_init(wifi_connected_callback_t callback) {
+static void connect_timeout_callback(void *arg) {
+  (void)arg;
+  if (s_recovery_mode || s_station_connected) return;
+  ESP_LOGW(TAG, "Wi-Fi did not connect within 30 seconds — returning to recovery AP");
+  wifi_start_recovery_ap();
+}
+
+void wifi_init(wifi_connection_callback_t connection_callback,
+               wifi_recovery_callback_t recovery_callback) {
   ESP_LOGI(TAG, "Starting wifi & TCP/IP...");
 
-  s_wifi_connected_callback = callback;
+  s_wifi_connection_callback = connection_callback;
+  s_wifi_recovery_callback = recovery_callback;
 
   ESP_ERROR_CHECK(esp_netif_init());
   esp_netif_create_default_wifi_sta();
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+  const esp_timer_create_args_t timeout_timer_args = {
+      .callback = connect_timeout_callback,
+      .arg = nullptr,
+      .dispatch_method = ESP_TIMER_TASK,
+      .name = "wifi_timeout",
+      .skip_unhandled_events = false,
+  };
+  ESP_ERROR_CHECK(esp_timer_create(&timeout_timer_args, &s_connect_timeout_timer));
 
   esp_event_handler_instance_t instance_any_id = nullptr;
   esp_event_handler_instance_t instance_got_ip = nullptr;
@@ -106,11 +146,16 @@ bool wifi_connect(const char *ssid, const char *psk) {
 
   ESP_ERROR_CHECK(esp_wifi_start());
   s_sta_started = true;
+  s_station_connected = false;
+  start_connect_timeout();
   return true;
 }
 
 void wifi_start_recovery_ap() {
+  if (s_recovery_mode) return;
   s_recovery_mode = true;  // prevent event handler from reconnecting STA
+  s_station_connected = false;
+  stop_connect_timeout();
   if (s_sta_started) {
     ESP_LOGW(TAG, "Recovery AP: stopping STA");
     esp_wifi_stop();
@@ -134,6 +179,9 @@ void wifi_start_recovery_ap() {
 
   ESP_LOGW(TAG, "Recovery AP active — SSID: '%s'  IP: %s",
            RECOVERY_AP_SSID, RECOVERY_AP_IP);
+  if (s_wifi_recovery_callback != nullptr) {
+    s_wifi_recovery_callback();
+  }
 }
 
 void wifi_cancel_recovery_ap() {
