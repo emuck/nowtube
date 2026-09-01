@@ -315,6 +315,23 @@ Output `.c` files land in `main/fonts/`. To expose one in the device picker,
 also add it to the curated catalog and theme map; `tools/README.md` documents
 the review criteria and workflow.
 
+### Preview the Curated Collection
+
+To compare the current clock fonts before a firmware build, run the local
+Look Studio with Python 3—no packages or ESP-IDF setup required:
+
+```bash
+# macOS / Linux
+python3 tools/look-studio/serve.py
+
+# Windows
+py tools\look-studio\serve.py
+```
+
+It opens a browser preview automatically. See
+[tools/look-studio/README.md](tools/look-studio/README.md) for port and
+network options.
+
 ---
 
 ## Repository Structure
