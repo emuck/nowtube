@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nowtube Look Studio</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Nowtube · design preview</p>
+        <h1>Look Studio</h1>
+        <p class="intro">Compare the small, intentional clock-font collection before building firmware. This is a visual review tool, not a hardware emulator.</p>
+      </header>
+
+      <section class="controls" aria-label="Preview controls">
+        <label>
+          Clock font
+          <select id="font">
+            <option value="nixie">Nixie One</option>
+            <option value="space">Space Mono</option>
+            <option value="atkinson">Atkinson Hyperlegible</option>
+            <option value="aldrich">Aldrich</option>
+          </select>
+        </label>
+        <label>
+          Time
+          <input id="time" type="time" value="09:41">
+        </label>
+        <label>
+          Brightness <output id="brightness-value">60%</output>
+          <input id="brightness" type="range" min="20" max="100" value="60">
+        </label>
+        <label class="switch">
+          <input id="show-weather" type="checkbox" checked>
+          <span>Show daytime icon</span>
+        </label>
+      </section>
+
+      <p class="font-note" id="font-note"></p>
+
+      <section class="tube-row" id="tube-row" aria-label="Six virtual Nowtube displays">
+        <article class="tube"><span class="digit weather-slot" id="digit-0">0</span><img id="weather-icon" src="../../main/spiffs/sunny.png" alt="Sunny"></article>
+        <article class="tube"><span class="digit" id="digit-1">9</span></article>
+        <article class="tube colon"><span class="digit">:</span></article>
+        <article class="tube"><span class="digit" id="digit-2">4</span></article>
+        <article class="tube"><span class="digit" id="digit-3">1</span></article>
+        <article class="tube detail"><span class="ampm" id="ampm">AM</span><span class="temp">68°</span></article>
+      </section>
+
+      <footer>Review here first; the connected Nowtube remains the final authority for spacing, contrast, and icon quality.</footer>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
