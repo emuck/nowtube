@@ -84,6 +84,13 @@ void render_boot_screen() {
   gui_lvgl_unlock();
 }
 
+void reload_clock_theme() {
+  if (s_recovery_active) return;
+  gui_lvgl_lock();
+  clock::get().reload_theme();
+  gui_lvgl_unlock();
+}
+
 void show_recovery_screen() {
   s_recovery_active = true;
   gui_lvgl_lock();
@@ -230,4 +237,3 @@ void on_time_loaded() {
 }
 
 }
-

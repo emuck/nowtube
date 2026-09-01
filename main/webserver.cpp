@@ -23,6 +23,7 @@
 
 #include "controllers/display_controller.h"
 #include "drivers/lcds.h"
+#include "font_catalog.h"
 #include "led_manager.h"
 #include "mode_manager.h"
 #include "models/device_config.h"
@@ -257,6 +258,17 @@ static auto config_get_handler(httpd_req_t *req) -> esp_err_t {
   cJSON_AddNumberToObject(weather, "conditions_refresh_minutes", config.conditions_refresh_minutes);
   cJSON_AddNumberToObject(display, "brightness_pct", config.display_brightness_pct);
   cJSON_AddNumberToObject(display, "clock_font", static_cast<int>(config.clock_font));
+  cJSON *clock_fonts = cJSON_AddArrayToObject(display, "clock_fonts");
+  size_t clock_font_count = 0;
+  const clock_font_info *clock_fonts_info = clock_font_catalog(&clock_font_count);
+  for (size_t i = 0; i < clock_font_count; ++i) {
+    cJSON *font = cJSON_CreateObject();
+    cJSON_AddNumberToObject(font, "value", static_cast<int>(clock_fonts_info[i].value));
+    cJSON_AddStringToObject(font, "id", clock_fonts_info[i].id);
+    cJSON_AddStringToObject(font, "label", clock_fonts_info[i].label);
+    cJSON_AddStringToObject(font, "description", clock_fonts_info[i].description);
+    cJSON_AddItemToArray(clock_fonts, font);
+  }
   cJSON_AddStringToObject(display, "panel_humidity_metric", config.panel_humidity_metric);
   cJSON *cycle = cJSON_AddObjectToObject(display, "cycle");
   cJSON_AddNumberToObject(cycle, "clock_s",    config.cycle_clock_s);
@@ -280,7 +292,8 @@ static auto config_post_handler(httpd_req_t *req) -> esp_err_t {
     return ESP_FAIL;
   }
 
-  device_config next = config_service::get_config();
+  const device_config current = config_service::get_config();
+  device_config next = current;
 
   cJSON *timezone = cJSON_GetObjectItemCaseSensitive(root, "timezone");
   if (cJSON_IsString(timezone)) {
@@ -353,6 +366,10 @@ static auto config_post_handler(httpd_req_t *req) -> esp_err_t {
   if (!config_service::update(next)) {
     httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "config save failed");
     return ESP_FAIL;
+  }
+
+  if (config_service::get_config().clock_font != current.clock_font) {
+    display_controller::reload_clock_theme();
   }
 
   lcds_set_brightness(next.display_brightness_pct);

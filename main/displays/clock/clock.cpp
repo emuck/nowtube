@@ -129,6 +129,20 @@ void clock::clock_tick() {
   }
 }
 
+void clock::reload_theme() {
+  const clock_theme &theme = font_theme_get(config_service::get_config().clock_font);
+
+  for (size_t i = 0; i < digit_images.size(); ++i) {
+    lv_obj_set_style_text_font(background_images[i], theme.digit, LV_PART_MAIN);
+  }
+  if (ampm_image != nullptr) {
+    lv_obj_set_style_text_font(ampm_image, theme.ampm, LV_PART_MAIN);
+  }
+  if (temp_label != nullptr) {
+    lv_obj_set_style_text_font(temp_label, theme.temp, LV_PART_MAIN);
+  }
+}
+
 void clock::colon_blink_tick() {
   lv_obj_t *colon_label = digit_images[COLON_PANEL_INDEX];
   if (lv_obj_has_flag(colon_label, LV_OBJ_FLAG_HIDDEN)) {

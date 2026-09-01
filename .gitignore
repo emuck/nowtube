@@ -42,6 +42,10 @@ secrets/
 # vendor assets — extracted from device, not redistributable
 nextube_assets/
 
+# Download cache populated by tools/font_convert.py.  Curated generated LVGL
+# sources live in main/fonts/ and are committed instead.
+fonts-src/
+
 # macOS metadata
 .DS_Store
 .cache/
