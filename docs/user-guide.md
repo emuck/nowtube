@@ -229,6 +229,20 @@ account required.
 
 Set any dwell time to **0** to skip that mode entirely in the auto-cycle.
 
+### Connecting Wi-Fi from Recovery Setup
+
+When the device is broadcasting the `nowtube-setup` network, connect to it and
+open `http://192.168.4.1`. Enter the home network name and password, then use
+**Save Settings**. Nowtube confirms the save and restarts itself automatically
+to join that network—no physical reboot is needed. If it cannot connect within
+30 seconds, it returns to `nowtube-setup` and shows the setup instructions
+again.
+
+The normal clock shows a small amber Wi-Fi symbol while disconnected. The
+manual recovery control remains available for intentionally changing networks.
+The ESP32 requires a 2.4 GHz network; WPA2 or WPA2/WPA3 mixed mode is
+recommended over a 5 GHz-only or WPA3-only network.
+
 ### LED Backlight Settings
 
 | Setting | Description |

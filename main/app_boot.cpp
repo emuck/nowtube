@@ -181,17 +181,23 @@ static void rtc_loaded_time(struct timeval *tv) {
   display_controller::on_time_loaded();
 }
 
-static void on_wifi_connected() {
+static void on_wifi_connection_changed(bool connected) {
+  display_controller::set_wifi_connected(connected);
+  if (!connected) return;
   ESP_LOGI(TAG, "Connected to wifi");
   sntp_init();
   weather_service_trigger_fetch();
 }
 
+static void on_wifi_recovery_started() {
+  ESP_LOGW(TAG, "Wi-Fi recovery active — nowtube-setup is available");
+  display_controller::show_recovery_screen();
+  backlight_service::set_recovery_cue();
+}
+
 static void on_wifi_recovery_requested() {
   ESP_LOGW(TAG, "Wi-Fi recovery requested — starting nowtube-setup AP");
   wifi_start_recovery_ap();
-  display_controller::show_recovery_screen();
-  backlight_service::set_recovery_cue();
 }
 
 static void on_wifi_recovery_cancelled() {
@@ -316,7 +322,7 @@ void app_boot_run() {
   bool got_time = rtc_init();
 
   ESP_LOGI(TAG, "boot: wifi init");
-  wifi_init(on_wifi_connected);
+  wifi_init(on_wifi_connection_changed, on_wifi_recovery_started);
   ESP_LOGI(TAG, "boot: gui_init");
   gui_init();
 
@@ -363,8 +369,6 @@ void app_boot_run() {
     // reach the config UI without a USB cable.
     ESP_LOGW(TAG, "No Wi-Fi SSID configured — starting recovery AP (nowtube-setup / 192.168.4.1)");
     wifi_start_recovery_ap();
-    display_controller::show_recovery_screen();
-    backlight_service::set_recovery_cue();
   }
 
   if (got_time) {

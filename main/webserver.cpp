@@ -294,6 +294,7 @@ static auto config_post_handler(httpd_req_t *req) -> esp_err_t {
 
   const device_config current = config_service::get_config();
   device_config next = current;
+  bool wifi_changed = false;
 
   cJSON *timezone = cJSON_GetObjectItemCaseSensitive(root, "timezone");
   if (cJSON_IsString(timezone)) {
@@ -306,9 +307,11 @@ static auto config_post_handler(httpd_req_t *req) -> esp_err_t {
     cJSON *psk = cJSON_GetObjectItemCaseSensitive(wifi, "psk");
     if (cJSON_IsString(ssid)) {
       snprintf(next.wifi_ssid, sizeof(next.wifi_ssid), "%s", ssid->valuestring);
+      wifi_changed = strcmp(next.wifi_ssid, current.wifi_ssid) != 0;
     }
     if (cJSON_IsString(psk)) {
       snprintf(next.wifi_psk, sizeof(next.wifi_psk), "%s", psk->valuestring);
+      wifi_changed = wifi_changed || strcmp(next.wifi_psk, current.wifi_psk) != 0;
     }
   }
 
@@ -381,6 +384,16 @@ static auto config_post_handler(httpd_req_t *req) -> esp_err_t {
   // without waiting up to conditions_refresh_minutes for the next cycle.
   if (strcmp(config_service::get_config().panel_humidity_metric, "aqi") == 0)
       weather_service_trigger_fetch();
+
+  // Applying a Wi-Fi change while serving the recovery AP requires restarting
+  // the ESP32's networking stack. Do that automatically after the response
+  // flushes, rather than making setup depend on a separate physical reboot.
+  if (wifi_changed) {
+    send_json(req, "{\"status\":\"ok\",\"restarting\":true}");
+    vTaskDelay(pdMS_TO_TICKS(500));
+    esp_restart();
+    return ESP_OK;
+  }
 
   send_json(req, "{\"status\":\"ok\"}");
   return ESP_OK;

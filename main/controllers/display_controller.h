@@ -14,6 +14,7 @@ void init();
 
 void render_boot_screen();
 void apply_mode(DisplayMode mode);
+void set_wifi_connected(bool connected);
 // Refresh the active clock typography after a saved font selection.
 void reload_clock_theme();
 void set_mode(DisplayMode mode);
