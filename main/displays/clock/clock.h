@@ -22,6 +22,9 @@ public:
   }
 
   void update();
+  // Reapply the configured font pack to existing clock objects.  The caller
+  // must hold gui_lvgl_lock().
+  void reload_theme();
   void shuffle();
   void show_value(const char *str);
   void show_value_instant(const char *str);  // no flapper; use when switching to WEATHER

@@ -20,6 +20,29 @@ function setChecked(id, value) {
   }
 }
 
+function populateClockFonts(fonts, selected) {
+  const select = document.getElementById("clock-font");
+  const description = document.getElementById("clock-font-description");
+  if (!select || !Array.isArray(fonts) || fonts.length === 0) return;
+
+  select.replaceChildren();
+  for (const font of fonts) {
+    const option = document.createElement("option");
+    option.value = String(font.value);
+    option.textContent = font.label;
+    option.dataset.description = font.description ?? "";
+    select.append(option);
+  }
+  select.value = String(selected);
+  if (select.value !== String(selected)) select.selectedIndex = 0;
+  const updateDescription = () => {
+    const option = select.options[select.selectedIndex];
+    if (description) description.textContent = option?.dataset.description ?? "";
+  };
+  select.onchange = updateDescription;
+  updateDescription();
+}
+
 function fmtUptime(s) {
   if (s < 60)   return `${s}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
@@ -111,7 +134,7 @@ async function loadConfig() {
   setValue("display-brightness", config.display?.brightness_pct);
   document.getElementById("display-brightness-val").textContent =
     (config.display?.brightness_pct ?? "") + "%";
-  setValue("clock-font", config.display?.clock_font ?? 0);
+  populateClockFonts(config.display?.clock_fonts, config.display?.clock_font ?? 0);
   setValue("panel-humidity-metric", config.display?.panel_humidity_metric ?? "humidity");
   setValue("cycle-clock-s",    config.display?.cycle?.clock_s);
   setValue("cycle-today-s",    config.display?.cycle?.today_s);

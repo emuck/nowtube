@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "config_validation.h"
+#include "font_catalog.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -56,8 +57,8 @@ void config_validate(device_config &config) {
   // Clamp numeric fields.
   if (config.display_brightness_pct > 100)
     config.display_brightness_pct = 100;
-  // Clamp clock_font to known values.
-  if (config.clock_font != ClockFont::NIXIE && config.clock_font != ClockFont::SPACE_MONO) {
+  // Clamp clock_font to an approved compiled font pack.
+  if (!clock_font_supported(config.clock_font)) {
     config.clock_font = ClockFont::NIXIE;
   }
 

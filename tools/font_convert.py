@@ -15,13 +15,12 @@ Requirements:
 """
 
 import argparse
-import io
 import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
-import zipfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -65,13 +64,12 @@ def google_font_id(name: str) -> str:
 
 def download_google_font(font_name: str) -> Path:
     """
-    Download a Google Font ZIP and extract TTF files.
-    Returns the directory containing the extracted TTF files.
-    """
-    font_id = google_font_id(font_name)
-    # Google Fonts direct download URL
-    url = f"https://fonts.google.com/download?family={font_name.replace(' ', '+')}"
+    Download the regular face exposed by the Google Fonts CSS API.
 
+    The former fonts.google.com/download ZIP endpoint now frequently returns an
+    HTML application shell instead of a ZIP.  The CSS API is stable, public,
+    and gives us a direct TrueType URL suitable for lv_font_conv.
+    """
     dest_dir = ARTWORK_DIR / font_name.replace(" ", "_")
     dest_dir.mkdir(parents=True, exist_ok=True)
 
@@ -81,30 +79,28 @@ def download_google_font(font_name: str) -> Path:
         print(f"  Font already downloaded: {dest_dir}")
         return dest_dir
 
-    print(f"  Downloading {font_name} from Google Fonts...")
+    print(f"  Downloading {font_name} from Google Fonts CSS API...")
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        family = urllib.parse.quote_plus(font_name)
+        css_url = f"https://fonts.googleapis.com/css2?family={family}:wght@400&display=swap"
+        req = urllib.request.Request(css_url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=30) as response:
-            zip_data = response.read()
+            css = response.read().decode("utf-8")
+        urls = re.findall(r"url\((https://fonts\.gstatic\.com/[^)]+)\)", css)
+        if not urls:
+            raise RuntimeError("Google Fonts did not return a downloadable regular TTF")
+        font_req = urllib.request.Request(urls[0], headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(font_req, timeout=30) as response:
+            font_data = response.read()
     except Exception as e:
         print(f"  Error downloading font: {e}")
         print(f"  Try downloading manually from https://fonts.google.com/specimen/{font_name.replace(' ', '+')}")
-        print(f"  and place the TTF files in: {dest_dir}")
+        print(f"  and place the TTF/OTF file in: {dest_dir}")
         sys.exit(1)
 
-    # Extract ZIP
-    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
-        for name in zf.namelist():
-            if name.endswith(".ttf") or name.endswith(".otf"):
-                data = zf.read(name)
-                out_path = dest_dir / Path(name).name
-                out_path.write_bytes(data)
-                print(f"  Extracted: {out_path.name}")
-
-    ttfs = list(dest_dir.glob("**/*.ttf")) + list(dest_dir.glob("**/*.otf"))
-    if not ttfs:
-        print(f"  No TTF/OTF files found in download.")
-        sys.exit(1)
+    out_path = dest_dir / f"{font_name.replace(' ', '_')}-Regular.ttf"
+    out_path.write_bytes(font_data)
+    print(f"  Downloaded: {out_path.name}")
 
     return dest_dir
 

@@ -11,7 +11,7 @@ Based on [previoustube](https://github.com/previoustube/previoustube) by Ian Lev
 
 ## What It Does
 
-- **Clock** — fast static time display with typography-driven updates; Space Mono or Nixie font selectable
+- **Clock** — fast static time display with a curated picker: Nixie One, Space Mono, Atkinson Hyperlegible, or Aldrich
 - **TODAY** — 6-panel ambient display: weekday, month/day + weather icon, day number, wind, humidity (or AQI), and next sun event
 - **FORECAST** — 5-day outlook across 6 panels; day codes first, then condition icons revealed mid-dwell via phase timer
 - **Web UI** — browser-based configuration served directly by the device; includes firmware update
@@ -304,15 +304,16 @@ The `tools/font_convert.py` script converts any Google Font to LVGL-ready `.c` f
 # Install once
 npm install -g lv_font_conv
 
-# Convert a font at standard clock sizes
-python3 tools/font_convert.py "DSEG7 Classic" --sizes 40 60 100 120 --charset clock
+# Convert a font at Nowtube's standard clock sizes
+python3 tools/font_convert.py "Atkinson Hyperlegible" --sizes 48 60 120 --charset clock+
 
 # See recommended fonts
 python3 tools/font_convert.py --list-fonts
 ```
 
-Output `.c` files land in `main/fonts/`. The tool prints the exact `CMakeLists.txt` lines to add.
-See `tools/README.md` for full documentation.
+Output `.c` files land in `main/fonts/`. To expose one in the device picker,
+also add it to the curated catalog and theme map; `tools/README.md` documents
+the review criteria and workflow.
 
 ---
 

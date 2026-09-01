@@ -8,8 +8,10 @@
 #include "mode_manager.h"
 
 enum class ClockFont : uint8_t {
-  NIXIE      = 0,
-  SPACE_MONO = 1,
+  NIXIE                  = 0,
+  SPACE_MONO             = 1,
+  ATKINSON_HYPERLEGIBLE  = 2,
+  ALDRICH                = 3,
 };
 
 struct device_config {

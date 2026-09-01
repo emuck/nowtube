@@ -225,7 +225,7 @@ account required.
 | Clock dwell | How long the device shows the clock before switching (seconds) |
 | TODAY dwell | How long it shows the TODAY screen before switching |
 | FORECAST dwell | How long it shows the FORECAST screen before switching |
-| Clock font | Choose between Nixie and Space Mono typefaces |
+| Clock font | Choose Nixie One, Space Mono, Atkinson Hyperlegible, or Aldrich; the device applies the saved choice immediately |
 
 Set any dwell time to **0** to skip that mode entirely in the auto-cycle.
 
@@ -461,8 +461,9 @@ watch -n 1 curl -s http://<device-ip>/api/ota/status
 
 ## 8. Changing the Display Font
 
-The clock and weather displays can use any Google Font. The `tools/font_convert.py`
-script handles the conversion.
+The clock can use curated, compiled font packs. The device includes Nixie One,
+Space Mono, Atkinson Hyperlegible, and Aldrich. The `tools/font_convert.py`
+script prepares a candidate Google Font for review and conversion.
 
 ### Requirements
 
@@ -477,16 +478,18 @@ npm install -g lv_font_conv
 python3 tools/font_convert.py --list-fonts
 
 # Convert a font at all standard clock sizes
-python3 tools/font_convert.py "DSEG7 Classic" --sizes 40 60 100 120 --charset clock
+python3 tools/font_convert.py "Atkinson Hyperlegible" --sizes 48 60 120 --charset clock+
 ```
 
 The script prints the exact lines to add to `CMakeLists.txt` and places the
-generated `.c` files in `main/fonts/`.
+generated `.c` files in `main/fonts/`. Downloaded source fonts are cached
+locally under `fonts-src/` and are intentionally not committed.
 
 ### Apply the Font
 
-1. Add the generated `.c` files to `CMakeLists.txt` as instructed by the script
-2. Set the font in `main/font_theme.cpp` to point to your new font
+1. Confirm the font's open licence and its fit on all six panels
+2. Add the generated `.c` files to `CMakeLists.txt`, then add a catalog entry
+   in `main/font_catalog.cpp` and a theme in `main/font_theme.cpp`
 3. Build and flash: `idf.py build` then upload via the web UI
 
 See `tools/README.md` for full documentation and a curated list of recommended

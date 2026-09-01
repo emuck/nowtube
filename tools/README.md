@@ -12,9 +12,6 @@ firmware, and places it in `main/fonts/` ready to declare and use.
 ### Prerequisites
 
 ```bash
-# Python dependency (just requests for download)
-pip3 install requests
-
 # LVGL font converter (Node.js)
 npm install -g lv_font_conv
 ```
@@ -22,8 +19,8 @@ npm install -g lv_font_conv
 ### Usage
 
 ```bash
-# Generate DSEG7 Classic at clock-useful sizes (clock charset = digits + colon)
-python3 tools/font_convert.py "DSEG7 Classic" --sizes 40 60 100 120
+# Generate a clock pack at the three sizes Nowtube uses
+python3 tools/font_convert.py "Atkinson Hyperlegible" --sizes 48 60 120 --charset clock+
 
 # Full ASCII for scrolling artist/title text
 python3 tools/font_convert.py "Share Tech Mono" --sizes 80 --charset full
@@ -56,7 +53,10 @@ The tool prints the exact lines you need to add to three files:
 3. your .cpp file        — lv_obj_set_style_text_font(obj, &font_name_120, LV_PART_MAIN)
 ```
 
-Then `idf.py build` and the font is live.
+Then add the font to the small curated catalog in `main/font_catalog.cpp` and
+`main/font_theme.cpp`, run `idf.py build`, and it appears in the device's Font
+picker. The downloaded TTF is a local cache under `fonts-src/` and is not
+committed; record licence and upstream provenance with the proposed font.
 
 ---
 
@@ -92,11 +92,15 @@ python3 tools/upload_spiffs_assets.py 192.168.88.25 --only moon.png app.js app.c
 
 | Font | Style | Best for |
 |---|---|---|
-| **DSEG7 Classic** | 7-segment LED | Clock digits — most authentic nixie/LED look |
-| **Share Tech Mono** | Clean terminal | Status info, scrolling text |
-| **Orbitron** | Geometric futuristic | Matches LightFuture theme aesthetic |
-| **Nova Square** | Retro digital | Good alternative to Oswald |
-| **Aldrich** | Modern, readable | Small size labels |
+| **Nixie One** | Warm tube lettering | Nowtube's signature default |
+| **Space Mono** | Clean technical mono | Quiet, compact clock face |
+| **Atkinson Hyperlegible** | Highly legible humanist sans | At-a-glance readability |
+| **Aldrich** | Geometric display face | Calm sci-fi alternative |
+
+Only add a font to the device picker when it has a compatible open licence,
+fits the six-panel layout at all three clock sizes, and has been visually
+reviewed on hardware. This keeps the choice intentional instead of turning
+the settings page into an uncurated font browser.
 
 All available free on [Google Fonts](https://fonts.google.com).
 
