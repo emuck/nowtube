@@ -102,6 +102,11 @@ too limiting.
 **Goal:** Make visual choices reviewable before a firmware build or device
 flash.
 
+**Current checkpoint:** a local CLOCK preview is available at
+`tools/look-studio/index.html`, covering the first curated font pack,
+brightness, time, and the approved sunny icon. TODAY, FORECAST, reusable Look
+bundles, and day/night fixtures remain later work.
+
 1. Build a local browser preview that renders six 80×162 virtual tubes with
    the real physical gaps and a scaled desktop view.
 2. Render the same semantic content as CLOCK, TODAY, and FORECAST using a
