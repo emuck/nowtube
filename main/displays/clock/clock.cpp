@@ -115,7 +115,7 @@ clock::clock() {
 
       wifi_status_icon = lv_label_create(screen);
       lv_label_set_text_static(wifi_status_icon, LV_SYMBOL_WIFI);
-      lv_obj_set_style_text_font(wifi_status_icon, &lv_font_montserrat_14, 0);
+      lv_obj_set_style_text_font(wifi_status_icon, &lv_font_montserrat_24, 0);
       lv_obj_set_style_text_color(wifi_status_icon, lv_color_hex(0xD69C58), 0);
       lv_obj_align(wifi_status_icon, LV_ALIGN_CENTER, 26, 0);
     }
@@ -511,6 +511,7 @@ void clock::hide_all() {
   }
   lv_obj_add_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_add_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
+  if (wifi_status_icon) lv_obj_add_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN);
   if (weather_icon_) lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
   if (moon_canvas_)  lv_obj_add_flag(moon_canvas_,  LV_OBJ_FLAG_HIDDEN);
 }
@@ -521,6 +522,7 @@ void clock::restore_all() {
   }
   lv_obj_clear_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_clear_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
+  if (wifi_status_icon && !wifi_connected_) lv_obj_clear_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN);
   // Re-apply panel 0 mode (loop above unconditionally unhid digit_images[0])
   set_panel0_mode(panel0_mode_);
   lv_timer_resume(clock_update_timer);
@@ -535,17 +537,21 @@ void clock::show_recovery_screen() {
   }
   lv_obj_add_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_add_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
+  if (wifi_status_icon) lv_obj_add_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN);
+  if (weather_icon_) lv_obj_add_flag(weather_icon_, LV_OBJ_FLAG_HIDDEN);
+  if (moon_canvas_) lv_obj_add_flag(moon_canvas_, LV_OBJ_FLAG_HIDDEN);
 
-  // One message segment per display.  Short directive words use Montserrat 24;
-  // longer values (SSID, URL) use Montserrat 14 where they fit.
+  // A single, high-legibility instruction card: each panel uses the same
+  // 24 px face.  The SSID and IP are deliberately stacked to preserve their
+  // exact values without shrinking the text to fit a narrow tube.
   struct panel_t { const char *text; const lv_font_t *font; };
   static const panel_t PANELS[NUM_LCDS] = {
-      {"SETUP\nMODE",     &lv_font_montserrat_24},  // context
-      {"JOIN\nWI-FI",     &lv_font_montserrat_24},  // step 1 directive
-      {"nowtube-\nsetup", &lv_font_montserrat_14},  // step 1 value (SSID)
-      {"OPEN A\nBROWSER", &lv_font_montserrat_14},  // step 2
-      {"GO\nTO:",         &lv_font_montserrat_24},  // step 3 directive
-      {"192.168.4.1",     &lv_font_montserrat_14},  // step 3 value (URL)
+      {"WIFI\nSETUP",    &lv_font_montserrat_24},
+      {"JOIN",           &lv_font_montserrat_24},
+      {"now\ntube\n-setup", &lv_font_montserrat_24},
+      {"OPEN",           &lv_font_montserrat_24},
+      {"WEB\nPAGE",      &lv_font_montserrat_24},
+      {"192\n.168\n.4.1", &lv_font_montserrat_24},
   };
 
   for (int i = 0; i < NUM_LCDS; i++) {
@@ -576,6 +582,8 @@ void clock::clear_recovery_screen() {
   }
   lv_obj_clear_flag(ampm_image, LV_OBJ_FLAG_HIDDEN);
   if (temp_label) lv_obj_clear_flag(temp_label, LV_OBJ_FLAG_HIDDEN);
+  if (wifi_status_icon && !wifi_connected_) lv_obj_clear_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN);
+  set_panel0_mode(panel0_mode_);
   lv_timer_resume(clock_update_timer);
 }
 
