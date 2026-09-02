@@ -30,6 +30,7 @@
 #include "services/backlight_service.h"
 #include "services/config_service.h"
 #include "services/status_service.h"
+#include "build_info.h"
 #include "version.h"
 #include "weather_parser.h"
 #include "weather_service.h"
@@ -241,7 +242,7 @@ static auto ping_get_handler(httpd_req_t *req) -> esp_err_t {
         static_cast<uint32_t>(esp_timer_get_time() / 1000000ULL);
     snprintf(buf, sizeof(buf),
              "{\"status\":\"ok\",\"firmware\":\"%s\",\"uptime_s\":%" PRIu32 "}",
-             NOWTUBE_FIRMWARE_REV, uptime_s);
+             NOWTUBE_BUILD_VERSION, uptime_s);
   }
   send_json(req, buf);
   return ESP_OK;

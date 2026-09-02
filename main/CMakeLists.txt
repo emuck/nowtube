@@ -2,6 +2,10 @@ find_package(Git QUIET)
 
 set(NOWTUBE_BUILD_GIT_SHA "unknown")
 set(NOWTUBE_BUILD_GIT_DIRTY 0)
+set(NOWTUBE_BUILD_VERSION "${PROJECT_VER}")
+if(NOWTUBE_BUILD_VERSION STREQUAL "")
+    set(NOWTUBE_BUILD_VERSION "unknown")
+endif()
 if(GIT_FOUND)
     execute_process(
         COMMAND "${GIT_EXECUTABLE}" rev-parse --short=12 HEAD
