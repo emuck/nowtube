@@ -86,7 +86,8 @@ async function loadStatus() {
 
   let rows = [
     statusRow("Firmware",  `v${version}`),
-    statusRow("Build",     `${gitSha}${dirtyNote} &middot; ${assetRev}`),
+    statusRow("Build",     `${gitSha}${dirtyNote}`),
+    statusRow("Asset set", `v${assetRev}`),
     statusRow("Built",     buildTime),
     statusRow("Uptime",    fmtUptime(s.uptime_s)),
     statusRow("Mode",      `${s.display.mode} &middot; ${s.display.brightness_pct}% brightness`),
