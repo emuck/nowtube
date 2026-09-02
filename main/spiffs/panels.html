@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>nowtube panel mirror</title>
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    .mode { margin-top: 22px; } .grid { display:grid; grid-template-columns:repeat(6,minmax(82px,1fr)); gap:9px; }
+    .tube { min-height:136px; border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:9px; background:rgba(0,0,0,.2); display:flex; flex-direction:column; justify-content:space-between; }
+    .index,.detail { color:var(--muted); font-size:12px; } .value { font-size:23px; line-height:1.18; white-space:pre-line; overflow-wrap:anywhere; }
+    @media(max-width:720px){.grid{grid-template-columns:repeat(3,minmax(82px,1fr));}}
+  </style>
+</head>
+<body><main class="page">
+  <header class="hero"><img src="/logo.png" class="hero-logo" alt="nowtube"><h1>Panel Mirror</h1><p class="lede">Live data model for each six-tube display mode.</p></header>
+  <section class="panel"><p id="meta" class="save-result">Loading…</p><div id="modes"></div><p><a class="btn-secondary" href="/">Configuration</a></p></section>
+</main><script>
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+function panel(p){const value=p.lines?p.lines.map(esc).join("\n"):esc(p.text);const detail=[p.kind,p.icon,p.detail,p.hidden?"hidden":""].filter(Boolean).join(" · ");return `<article class="tube"><span class="index">Tube ${p.index+1}</span><strong class="value">${value}</strong><span class="detail">${detail}</span></article>`;}
+function render(data){document.querySelector("#meta").textContent=`Active: ${data.current_mode} · updated ${new Date(data.generated_at*1000).toLocaleTimeString()}`;document.querySelector("#modes").innerHTML=data.modes.map(m=>`<section class="mode"><h2>${esc(m.mode)}</h2><div class="grid">${m.panels.map(panel).join("")}</div></section>`).join("");}
+async function load(){const r=await fetch("/api/panels",{cache:"no-store"});if(!r.ok)throw new Error(`${r.status} ${r.statusText}`);render(await r.json());}
+load().catch(e=>document.querySelector("#meta").textContent=`Mirror unavailable: ${e.message}`);setInterval(()=>load().catch(()=>{}),1000);
+</script></body></html>

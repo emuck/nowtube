@@ -31,6 +31,7 @@
 #include "services/config_service.h"
 #include "services/status_service.h"
 #include "version.h"
+#include "weather_parser.h"
 #include "weather_service.h"
 #include <algorithm>
 
@@ -41,6 +42,8 @@ extern const char app_js_start[]     asm("_binary_app_js_start");
 extern const char app_js_end[]       asm("_binary_app_js_end");
 extern const char app_css_start[]      asm("_binary_app_css_start");
 extern const char app_css_end[]        asm("_binary_app_css_end");
+extern const char panels_html_start[] asm("_binary_panels_html_start");
+extern const char panels_html_end[]   asm("_binary_panels_html_end");
 
 static const auto TAG = "webserver";
 constexpr size_t MAX_BODY_SIZE = 512;
@@ -199,6 +202,11 @@ static auto app_css_get_handler(httpd_req_t *req) -> esp_err_t {
 static auto app_js_get_handler(httpd_req_t *req) -> esp_err_t {
   httpd_resp_set_type(req, "application/javascript; charset=utf-8");
   return httpd_resp_send(req, app_js_start, app_js_end - app_js_start - 1);
+}
+
+static auto panels_html_get_handler(httpd_req_t *req) -> esp_err_t {
+  httpd_resp_set_type(req, "text/html; charset=utf-8");
+  return httpd_resp_send(req, panels_html_start, panels_html_end - panels_html_start - 1);
 }
 
 static auto logo_get_handler(httpd_req_t *req) -> esp_err_t {
@@ -750,6 +758,146 @@ static auto backlight_post_handler(httpd_req_t *req) -> esp_err_t {
   return ESP_OK;
 }
 
+// ---- Panel mirror -----------------------------------------------------------
+
+static const char *condition_icon_name(uint16_t code) {
+  if (code == 0 || code == 1) return "sunny";
+  if (code == 2) return "partly cloudy";
+  if (code == 3) return "cloudy";
+  if (code == 45 || code == 48) return "fog";
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return "snow";
+  if (code >= 95) return "thunderstorm";
+  return "rain";
+}
+
+static cJSON *panel_json(int index, const char *kind) {
+  cJSON *panel = cJSON_CreateObject();
+  cJSON_AddNumberToObject(panel, "index", index);
+  cJSON_AddStringToObject(panel, "kind", kind);
+  return panel;
+}
+
+static void panel_add_text(cJSON *panels, int index, const char *kind, const char *text) {
+  cJSON *panel = panel_json(index, kind);
+  cJSON_AddStringToObject(panel, "text", text != nullptr ? text : "");
+  cJSON_AddItemToArray(panels, panel);
+}
+
+static void panel_add_lines(cJSON *panel, const char *a, const char *b = nullptr) {
+  cJSON *lines = cJSON_AddArrayToObject(panel, "lines");
+  if (a) cJSON_AddItemToArray(lines, cJSON_CreateString(a));
+  if (b) cJSON_AddItemToArray(lines, cJSON_CreateString(b));
+}
+
+static cJSON *panel_add_mode(cJSON *modes, const char *name) {
+  cJSON *mode = cJSON_CreateObject();
+  cJSON_AddStringToObject(mode, "mode", name);
+  cJSON *panels = cJSON_AddArrayToObject(mode, "panels");
+  cJSON_AddItemToArray(modes, mode);
+  return panels;
+}
+
+static void panel_add_clock(cJSON *modes, const current_conditions &cond) {
+  cJSON *panels = panel_add_mode(modes, "CLOCK");
+  time_t now = time(nullptr);
+  struct tm tm {};
+  localtime_r(&now, &tm);
+  char clock_text[16];
+  strftime(clock_text, sizeof(clock_text), "%I:%M%p", &tm);
+  for (int i = 0; i < 5; ++i) {
+    char text[2] = {clock_text[i], '\0'};
+    cJSON *panel = panel_json(i, i == 2 ? "separator" : "digit");
+    cJSON_AddStringToObject(panel, "text", text);
+    if (i == 0 && clock_text[0] == '0') cJSON_AddBoolToObject(panel, "hidden", true);
+    cJSON_AddItemToArray(panels, panel);
+  }
+  cJSON *status = panel_json(5, "AM/PM + temperature");
+  char temperature[16] = "";
+  if (cond.valid) snprintf(temperature, sizeof(temperature), "%s%s", cond.temp_value, cond.temp_unit);
+  panel_add_lines(status, clock_text[5] == 'A' ? "AM" : "PM", temperature[0] ? temperature : "--");
+  cJSON_AddItemToArray(panels, status);
+}
+
+static void panel_add_today(cJSON *modes, const current_conditions &cond) {
+  cJSON *panels = panel_add_mode(modes, "TODAY");
+  time_t now = time(nullptr);
+  struct tm tm {};
+  localtime_r(&now, &tm);
+  static const char *MONTHS[] = {"JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
+  static const char *WEEKDAYS[] = {"SUN","MON","TUE","WED","THU","FRI","SAT"};
+  panel_add_text(panels, 0, "weekday", WEEKDAYS[tm.tm_wday]);
+  panel_add_text(panels, 1, "month", MONTHS[tm.tm_mon]);
+  char day[8];
+  snprintf(day, sizeof(day), "%d", tm.tm_mday);
+  cJSON *day_weather = panel_json(2, "weather icon + day of month");
+  cJSON_AddStringToObject(day_weather, "text", day);
+  cJSON_AddStringToObject(day_weather, "icon", condition_icon_name(cond.weather_code));
+  cJSON_AddItemToArray(panels, day_weather);
+  cJSON *wind = panel_json(3, "wind");
+  char wind_speed[16];
+  snprintf(wind_speed, sizeof(wind_speed), "%d", cond.valid ? cond.wind_speed : 0);
+  panel_add_lines(wind, cond.valid ? wind_speed : "--", cond.valid ? wind_direction_abbr(cond.wind_deg) : nullptr);
+  cJSON_AddStringToObject(wind, "icon", "wind");
+  cJSON_AddItemToArray(panels, wind);
+  cJSON *humidity = panel_json(4, "humidity");
+  char humidity_value[16];
+  snprintf(humidity_value, sizeof(humidity_value), "%u%%", cond.valid ? cond.humidity : 0);
+  cJSON_AddStringToObject(humidity, "text", cond.valid ? humidity_value : "--");
+  cJSON_AddStringToObject(humidity, "icon", "drop");
+  cJSON_AddItemToArray(panels, humidity);
+  cJSON *sun = panel_json(5, "next sun event");
+  if (cond.valid && (cond.sunrise_min > 0 || cond.sunset_min > 0)) {
+    uint16_t now_min = static_cast<uint16_t>(tm.tm_hour * 60 + tm.tm_min);
+    uint16_t event_min = now_min < cond.sunrise_min ? cond.sunrise_min : cond.sunset_min;
+    if (event_min == 0 || event_min <= now_min) event_min = cond.sunrise_min;
+    char sun_time[16];
+    snprintf(sun_time, sizeof(sun_time), "%u:%02u", event_min / 60 % 12 ?: 12, event_min % 60);
+    cJSON_AddStringToObject(sun, "text", sun_time);
+  } else {
+    cJSON_AddStringToObject(sun, "text", "--");
+  }
+  cJSON_AddItemToArray(panels, sun);
+}
+
+static void panel_add_forecast(cJSON *modes, const forecast_data &forecast) {
+  cJSON *panels = panel_add_mode(modes, "FORECAST");
+  panel_add_text(panels, 0, "legend", "HI / LO");
+  for (int i = 1; i < static_cast<int>(NUM_LCDS); ++i) {
+    cJSON *panel = panel_json(i, "forecast day");
+    const int day_index = i - 1;
+    if (forecast.valid && forecast.days[day_index].valid) {
+      const forecast_day &day = forecast.days[day_index];
+      char high[8], low[8];
+      snprintf(high, sizeof(high), "%d", day.high);
+      snprintf(low, sizeof(low), "%d", day.low);
+      panel_add_lines(panel, forecast_day_code(day.wday), high);
+      cJSON_AddStringToObject(panel, "detail", low);
+      cJSON_AddStringToObject(panel, "icon", condition_icon_name(day.weather_code));
+    } else {
+      panel_add_lines(panel, "--", "--");
+    }
+    cJSON_AddItemToArray(panels, panel);
+  }
+}
+
+static auto panels_get_handler(httpd_req_t *req) -> esp_err_t {
+  current_conditions conditions {};
+  forecast_data forecast {};
+  display_controller::get_conditions_snapshot(conditions);
+  display_controller::get_forecast_snapshot(forecast);
+
+  cJSON *root = cJSON_CreateObject();
+  cJSON_AddNumberToObject(root, "generated_at", static_cast<double>(time(nullptr)));
+  cJSON_AddStringToObject(root, "current_mode", ModeManager::name(ModeManager::get().current()));
+  cJSON *modes = cJSON_AddArrayToObject(root, "modes");
+  panel_add_clock(modes, conditions);
+  panel_add_today(modes, conditions);
+  panel_add_forecast(modes, forecast);
+  esp_err_t err = send_json_cjson(req, root);
+  cJSON_Delete(root);
+  return err;
+}
+
 // ---- URI registrations ------------------------------------------------------
 
 static const httpd_uri_t uri_health = {
@@ -764,8 +912,14 @@ static const httpd_uri_t uri_app_js = {
 static const httpd_uri_t uri_logo = {
     .uri = "/logo.png", .method = HTTP_GET, .handler = logo_get_handler, .user_ctx = nullptr};
 
+static const httpd_uri_t uri_panels_html = {
+    .uri = "/panels", .method = HTTP_GET, .handler = panels_html_get_handler, .user_ctx = nullptr};
+
 static const httpd_uri_t uri_status = {
     .uri = "/api/status", .method = HTTP_GET, .handler = ping_get_handler, .user_ctx = nullptr};
+
+static const httpd_uri_t uri_panels_api = {
+    .uri = "/api/panels", .method = HTTP_GET, .handler = panels_get_handler, .user_ctx = nullptr};
 
 static const httpd_uri_t uri_config_get = {
     .uri = "/api/config", .method = HTTP_GET, .handler = config_get_handler, .user_ctx = nullptr};
@@ -822,7 +976,9 @@ void webserver_init(status_request_callback_t status_callback) {
   httpd_register_uri_handler(server, &uri_app_css);
   httpd_register_uri_handler(server, &uri_app_js);
   httpd_register_uri_handler(server, &uri_logo);
+  httpd_register_uri_handler(server, &uri_panels_html);
   httpd_register_uri_handler(server, &uri_status);
+  httpd_register_uri_handler(server, &uri_panels_api);
   httpd_register_uri_handler(server, &uri_config_get);
   httpd_register_uri_handler(server, &uri_config_post);
   httpd_register_uri_handler(server, &uri_mode_get);

@@ -34,6 +34,7 @@ idf_component_register(
         "spiffs/index.html"
         "spiffs/app.js"
         "spiffs/app.css"
+        "spiffs/panels.html"
         SRCS
         "app_boot.cpp"
         "config_validation.cpp"
