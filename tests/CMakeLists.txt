@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(test_config_validation
     test_config_validation.cpp
     ${CMAKE_SOURCE_DIR}/../main/config_validation.cpp
+    ${CMAKE_SOURCE_DIR}/../main/font_catalog.cpp
 )
 
 target_include_directories(test_config_validation PRIVATE

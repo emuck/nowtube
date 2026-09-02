@@ -84,6 +84,20 @@ void render_boot_screen() {
   gui_lvgl_unlock();
 }
 
+void set_wifi_connected(bool connected) {
+  if (s_recovery_active) return;
+  gui_lvgl_lock();
+  clock::get().set_wifi_connected(connected);
+  gui_lvgl_unlock();
+}
+
+void reload_clock_theme() {
+  if (s_recovery_active) return;
+  gui_lvgl_lock();
+  clock::get().reload_theme();
+  gui_lvgl_unlock();
+}
+
 void show_recovery_screen() {
   s_recovery_active = true;
   gui_lvgl_lock();
@@ -174,6 +188,20 @@ DisplayMode current_mode() {
   return ModeManager::get().current();
 }
 
+bool get_conditions_snapshot(current_conditions &out) {
+  conditions_lock();
+  out = s_conditions;
+  conditions_unlock();
+  return out.valid;
+}
+
+bool get_forecast_snapshot(forecast_data &out) {
+  forecast_lock();
+  out = s_forecast;
+  forecast_unlock();
+  return out.valid;
+}
+
 void on_conditions_updated(const current_conditions &data) {
   if (s_recovery_active) return;
 
@@ -230,4 +258,3 @@ void on_time_loaded() {
 }
 
 }
-

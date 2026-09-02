@@ -112,6 +112,12 @@ clock::clock() {
       lv_obj_set_width(temp_label, LCD_WIDTH + 16);
       lv_obj_set_pos(temp_label, -8, 96);
       lv_label_set_text_static(temp_label, "");
+
+      wifi_status_icon = lv_label_create(screen);
+      lv_label_set_text_static(wifi_status_icon, LV_SYMBOL_WIFI);
+      lv_obj_set_style_text_font(wifi_status_icon, &lv_font_montserrat_14, 0);
+      lv_obj_set_style_text_color(wifi_status_icon, lv_color_hex(0xD69C58), 0);
+      lv_obj_align(wifi_status_icon, LV_ALIGN_CENTER, 26, 0);
     }
   }
 
@@ -121,11 +127,35 @@ clock::clock() {
   if (MOON_TEST_MODE) show_moon_test();
 }
 
+void clock::set_wifi_connected(bool connected) {
+  wifi_connected_ = connected;
+  if (wifi_status_icon == nullptr) return;
+  if (wifi_connected_) {
+    lv_obj_add_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_clear_flag(wifi_status_icon, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
 void clock::clock_tick() {
   colon_blink_tick();
   time_t now = time(nullptr);
   if (now >= next_update_time_) {
     update();
+  }
+}
+
+void clock::reload_theme() {
+  const clock_theme &theme = font_theme_get(config_service::get_config().clock_font);
+
+  for (size_t i = 0; i < digit_images.size(); ++i) {
+    lv_obj_set_style_text_font(background_images[i], theme.digit, LV_PART_MAIN);
+  }
+  if (ampm_image != nullptr) {
+    lv_obj_set_style_text_font(ampm_image, theme.ampm, LV_PART_MAIN);
+  }
+  if (temp_label != nullptr) {
+    lv_obj_set_style_text_font(temp_label, theme.temp, LV_PART_MAIN);
   }
 }
 

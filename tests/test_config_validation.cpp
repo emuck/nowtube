@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <initializer_list>
 #include <cstring>
 #include <cmath>
 
@@ -597,6 +598,23 @@ static void test_panel_humidity_metric_normalization() {
   CHECK_STREQ(c.panel_humidity_metric, "humidity");
 }
 
+static void test_clock_font_catalog_validation() {
+  suite_begin("clock font catalog validation");
+
+  for (ClockFont font : {ClockFont::NIXIE, ClockFont::SPACE_MONO,
+                         ClockFont::ATKINSON_HYPERLEGIBLE, ClockFont::ALDRICH}) {
+    device_config c{};
+    c.clock_font = font;
+    config_validate(c);
+    CHECK(c.clock_font == font);
+  }
+
+  device_config invalid{};
+  invalid.clock_font = static_cast<ClockFont>(99);
+  config_validate(invalid);
+  CHECK(invalid.clock_font == ClockFont::NIXIE);
+}
+
 int main() {
   test_defaults();
   test_trim_string();
@@ -618,6 +636,7 @@ int main() {
   test_forecast_dwell_even_normalization();
   test_validate_trims_before_normalisation();
   test_panel_humidity_metric_normalization();
+  test_clock_font_catalog_validation();
 
   printf("\n=== %d passed, %d failed ===\n", s_pass, s_fail);
   return s_fail > 0 ? 1 : 0;

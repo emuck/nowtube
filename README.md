@@ -11,10 +11,10 @@ Based on [previoustube](https://github.com/previoustube/previoustube) by Ian Lev
 
 ## What It Does
 
-- **Clock** — fast static time display with typography-driven updates; Space Mono or Nixie font selectable
-- **TODAY** — 6-panel ambient display: weekday, month/day + weather icon, day number, wind, humidity (or AQI), and next sun event
+- **Clock** — fast static time display with a curated picker: Nixie One, Space Mono, Atkinson Hyperlegible, or Aldrich
+- **TODAY** — 6-panel ambient display: weekday, month, day-of-month + weather icon, wind, humidity (or AQI), and next sun event
 - **FORECAST** — 5-day outlook across 6 panels; day codes first, then condition icons revealed mid-dwell via phase timer
-- **Web UI** — browser-based configuration served directly by the device; includes firmware update
+- **Web UI** — browser-based configuration, a live six-panel mirror, and firmware update served directly by the device
 - **OTA Updates** — browser-upload and curl-based OTA; no local HTTP server required after first USB flash
 - **Google Fonts** — one-command font swapping via `tools/font_convert.py`
 - **Game** — Tube Invaders: 6-lane vertical shooter across all 6 displays; long-press left to enter/exit
@@ -72,13 +72,16 @@ Browser (local)
 | 4 | On-device weather service + auto-cycle | ✅ Complete |
 | 5 | OTA firmware updates over WiFi | ✅ Complete |
 | 6 | Web configuration UI | ✅ Complete |
-| 7 | Google Fonts pipeline (formalize tooling) | 🔲 Planned |
+| 7 | Curated clock-font catalog + browser Look Studio | ✅ Complete |
 | 8 | FORECAST mode (5-day ambient display) | ✅ Substantially complete (v0.4) |
 | 9 | TODAY mode (current conditions display) | ✅ Substantially complete (v0.4) |
 | 10 | Tube Invaders (game) | ✅ Complete |
+| 11 | Wi-Fi recovery fallback + offline indicator | ✅ Complete |
+| 12 | Live Panel Mirror | ✅ Complete |
 
 See [docs/user-guide.md](docs/user-guide.md) for the full user guide (setup, modes, buttons, OTA, fonts, recovery).
 See [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) for full detail on each project.
+See [docs/PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) for the focused product direction and next priorities.
 
 ### Hardware Validation
 
@@ -88,7 +91,7 @@ The following areas have been verified on a real device running current firmware
 |---|---|---|
 | Cold boot, NTP sync, RTC fallback | ✅ Pass | Boot completes cleanly; RTC used before NTP; `last_reset_reason` and `boot_count` accurate |
 | Wi-Fi connect and status reporting | ✅ Pass | `retry_count` increments on failures; `wifi.connected` and `ip` fields accurate |
-| Bad Wi-Fi credentials → retry loop | ✅ Pass | Device retries without crashing; recovers on reboot after NVS credential restore |
+| Bad Wi-Fi credentials → recovery fallback | ⚠️ Needs final device check | Firmware returns to `nowtube-setup` with on-device instructions after a 30-second connection timeout |
 | Weather fetch success | ✅ Pass | Open-Meteo fetch (no API key), NVS cache, and display update all working |
 | Bad location config → no crash | ✅ Pass | Fetch errors logged; display holds last known value |
 | Auto-cycle CLOCK→TODAY→FORECAST | ✅ Pass | After `lv_async_call` race fix (see Known Issues under Web Configuration); 12-hour soak confirmed |
@@ -101,8 +104,9 @@ The following areas have been verified on a real device running current firmware
 | OTA unreachable URL | ✅ Pass | Returns `failed` state; subsequent requests succeed |
 | OTA duplicate request while in progress | ✅ Pass | Returns `busy` while downloading; not blocked after completion |
 | Mid-session AP drop → auto-reconnect | ✅ Pass | 28 retries over 71 s; no reboot; reconnects cleanly; weather resumes; NTP re-syncs via internal `IP_EVENT_STA_GOT_IP` handler. Required SNTP double-init fix (see Known Issues). |
-| Wi-Fi recovery: middle long-press entry | ✅ Pass | AP starts, SSID visible, config UI reachable at 192.168.4.1, credentials saved, device reboots into STA mode |
-| Wi-Fi recovery: boot with no saved SSID | ✅ Pass | Full erase + comment-only wifi.txt; device boots directly into recovery AP, configures via web UI, reboots into STA mode |
+| Wi-Fi recovery: middle long-press entry | ✅ Pass | AP starts, SSID visible, config UI reachable at 192.168.4.1; saving credentials restarts into STA mode automatically |
+| Wi-Fi recovery: boot with no saved SSID | ✅ Pass | Full erase + comment-only wifi.txt; device boots directly into recovery AP, configures via web UI, and restarts automatically |
+| Panel Mirror | ✅ Pass | `/panels` provides a live read-only view of CLOCK, TODAY, and FORECAST data across six virtual tubes |
 | GAME mode — enter/exit, play, sounds | ✅ Pass | Long-press left enters/exits; ship moves, fires, collision detected; FIRE/HIT/GAME_OVER/RESTART/BLOCKED sounds confirmed; high score persists across reboot |
 
 ---
@@ -218,6 +222,8 @@ Credentials remain in NVS and can only be replaced by posting new values.
 API surface:
 
 - `GET /api/status` — live status snapshot (uptime, Wi-Fi, heap, last fetch)
+- `GET /panels` — browser Panel Mirror for the six virtual tubes in each display mode
+- `GET /api/panels` — read-only JSON data behind the Panel Mirror
 - `GET /api/config` / `POST /api/config` — read/write device configuration
 - `POST /api/ota/upload` — upload firmware binary directly from browser
 - `GET /api/ota/status` — poll OTA progress
@@ -303,15 +309,33 @@ The `tools/font_convert.py` script converts any Google Font to LVGL-ready `.c` f
 # Install once
 npm install -g lv_font_conv
 
-# Convert a font at standard clock sizes
-python3 tools/font_convert.py "DSEG7 Classic" --sizes 40 60 100 120 --charset clock
+# Convert a font at Nowtube's standard clock sizes
+python3 tools/font_convert.py "Atkinson Hyperlegible" --sizes 48 60 120 --charset clock+
 
 # See recommended fonts
 python3 tools/font_convert.py --list-fonts
 ```
 
-Output `.c` files land in `main/fonts/`. The tool prints the exact `CMakeLists.txt` lines to add.
-See `tools/README.md` for full documentation.
+Output `.c` files land in `main/fonts/`. To expose one in the device picker,
+also add it to the curated catalog and theme map; `tools/README.md` documents
+the review criteria and workflow.
+
+### Preview the Curated Collection
+
+To compare the current clock fonts before a firmware build, run the local
+Look Studio with Python 3—no packages or ESP-IDF setup required:
+
+```bash
+# macOS / Linux
+python3 tools/look-studio/serve.py
+
+# Windows
+py tools\look-studio\serve.py
+```
+
+It opens a browser preview automatically. See
+[tools/look-studio/README.md](tools/look-studio/README.md) for port and
+network options.
 
 ---
 

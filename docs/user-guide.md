@@ -163,8 +163,10 @@ called `nowtube-setup`. The six displays will show setup instructions.
 1. On your phone or laptop, connect to the `nowtube-setup` WiFi network
 2. Open a browser and go to `http://192.168.4.1/`
 3. Enter your home WiFi name and password in the WiFi section
-4. Click **Save**
-5. The device will reboot and connect to your home network
+4. Click **Save Settings**
+5. The device confirms the save and restarts automatically to join your home network
+6. If it cannot join within 30 seconds, it returns to `nowtube-setup` with the
+   setup instructions visible again
 
 ### Finding the Device on Your Network
 
@@ -225,9 +227,35 @@ account required.
 | Clock dwell | How long the device shows the clock before switching (seconds) |
 | TODAY dwell | How long it shows the TODAY screen before switching |
 | FORECAST dwell | How long it shows the FORECAST screen before switching |
-| Clock font | Choose between Nixie and Space Mono typefaces |
+| Clock font | Choose Nixie One, Space Mono, Atkinson Hyperlegible, or Aldrich; the device applies the saved choice immediately |
 
 Set any dwell time to **0** to skip that mode entirely in the auto-cycle.
+
+### Panel Mirror
+
+The settings page includes **Open Panel Mirror**. It opens `/panels`, a
+read-only live view of the data sent to each tube in CLOCK, TODAY, and
+FORECAST. It is useful for checking weather values and panel meaning without
+waiting for the physical auto-cycle. The mirror refreshes once per second and
+does not change the device configuration.
+
+### Connecting Wi-Fi from Recovery Setup
+
+When the device is broadcasting the `nowtube-setup` network, connect to it and
+open `http://192.168.4.1`. Enter the home network name and password, then use
+**Save Settings**. Nowtube confirms the save and restarts itself automatically
+to join that network—no physical reboot is needed. If it cannot connect within
+30 seconds, it returns to `nowtube-setup` and shows the setup instructions
+again.
+
+Your phone will briefly lose its `nowtube-setup` connection during that
+restart. That is expected; reconnect it to the home network rather than
+treating the browser's temporary connection error as a failed save.
+
+The normal clock shows a small amber Wi-Fi symbol while disconnected. The
+manual recovery control remains available for intentionally changing networks.
+The ESP32 requires a 2.4 GHz network; WPA2 or WPA2/WPA3 mixed mode is
+recommended over a 5 GHz-only or WPA3-only network.
 
 ### LED Backlight Settings
 
@@ -461,8 +489,9 @@ watch -n 1 curl -s http://<device-ip>/api/ota/status
 
 ## 8. Changing the Display Font
 
-The clock and weather displays can use any Google Font. The `tools/font_convert.py`
-script handles the conversion.
+The clock can use curated, compiled font packs. The device includes Nixie One,
+Space Mono, Atkinson Hyperlegible, and Aldrich. The `tools/font_convert.py`
+script prepares a candidate Google Font for review and conversion.
 
 ### Requirements
 
@@ -477,16 +506,18 @@ npm install -g lv_font_conv
 python3 tools/font_convert.py --list-fonts
 
 # Convert a font at all standard clock sizes
-python3 tools/font_convert.py "DSEG7 Classic" --sizes 40 60 100 120 --charset clock
+python3 tools/font_convert.py "Atkinson Hyperlegible" --sizes 48 60 120 --charset clock+
 ```
 
 The script prints the exact lines to add to `CMakeLists.txt` and places the
-generated `.c` files in `main/fonts/`.
+generated `.c` files in `main/fonts/`. Downloaded source fonts are cached
+locally under `fonts-src/` and are intentionally not committed.
 
 ### Apply the Font
 
-1. Add the generated `.c` files to `CMakeLists.txt` as instructed by the script
-2. Set the font in `main/font_theme.cpp` to point to your new font
+1. Confirm the font's open licence and its fit on all six panels
+2. Add the generated `.c` files to `CMakeLists.txt`, then add a catalog entry
+   in `main/font_catalog.cpp` and a theme in `main/font_theme.cpp`
 3. Build and flash: `idf.py build` then upload via the web UI
 
 See `tools/README.md` for full documentation and a curated list of recommended
@@ -526,7 +557,11 @@ SETUP   JOIN    nowtube-  OPEN A    GO TO:  192.168.
 2. Open a browser and navigate to **`http://192.168.4.1/`**
    (you must type this manually — there is no automatic redirect)
 3. Update your WiFi credentials in the WiFi section and click **Save**
-4. The device will reboot and connect to your home network
+4. The page confirms the save and the device restarts automatically to join
+   your home network. Your phone will briefly lose the setup AP; switch it
+   back to the home network.
+5. If joining fails, wait 30 seconds for `nowtube-setup` and its on-device
+   instructions to return automatically.
 
 ### Cancelling Recovery Mode
 

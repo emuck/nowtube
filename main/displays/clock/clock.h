@@ -22,6 +22,10 @@ public:
   }
 
   void update();
+  void set_wifi_connected(bool connected);
+  // Reapply the configured font pack to existing clock objects.  The caller
+  // must hold gui_lvgl_lock().
+  void reload_theme();
   void shuffle();
   void show_value(const char *str);
   void show_value_instant(const char *str);  // no flapper; use when switching to WEATHER
@@ -64,6 +68,8 @@ private:
   std::array<lv_timer_t *, NUM_LCDS-1> delayed_start_timers{};
   lv_obj_t *ampm_image{};
   lv_obj_t *temp_label{};
+  lv_obj_t *wifi_status_icon{};
+  bool wifi_connected_{false};
   lv_obj_t *weather_icon_{};    // weather condition icon, panel 0
   lv_obj_t *moon_canvas_{};    // dynamically rendered moon, panel 0 (shown at night)
   void     *moon_canvas_buf_{}; // PSRAM backing buffer for moon_canvas_
