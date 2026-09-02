@@ -31,7 +31,6 @@
 #include "services/config_service.h"
 #include "services/status_service.h"
 #include "build_info.h"
-#include "version.h"
 #include "weather_parser.h"
 #include "weather_service.h"
 #include <algorithm>

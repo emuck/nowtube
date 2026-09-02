@@ -32,7 +32,6 @@
 #include "services/diagnostics_service.h"
 #include "services/status_service.h"
 #include "build_info.h"
-#include "version.h"
 #include "weather_service.h"
 #include "webserver.h"
 
@@ -238,7 +237,7 @@ static void status_handler(char *buffer, size_t buffer_size) {
            snap.build.git_sha != nullptr ? snap.build.git_sha : "unknown",
            snap.build.git_dirty ? "true" : "false",
            snap.build.build_time_utc != nullptr ? snap.build.build_time_utc : "",
-           snap.build.asset_rev != nullptr ? snap.build.asset_rev : NOWTUBE_ASSET_REV,
+           snap.build.asset_rev != nullptr ? snap.build.asset_rev : NOWTUBE_BUILD_VERSION,
            static_cast<unsigned long>(snap.uptime_s),
            snap.wifi.connected ? "true" : "false",
            snap.wifi.ip != nullptr ? snap.wifi.ip : "",
@@ -299,7 +298,7 @@ void app_boot_run() {
       .firmware_version = NOWTUBE_BUILD_VERSION,
       .git_sha = NOWTUBE_BUILD_GIT_SHA,
       .build_time_utc = NOWTUBE_BUILD_TIME_UTC,
-      .asset_rev = NOWTUBE_ASSET_REV,
+      .asset_rev = NOWTUBE_BUILD_VERSION,
       .git_dirty = NOWTUBE_BUILD_GIT_DIRTY != 0,
   });
 
