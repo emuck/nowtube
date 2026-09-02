@@ -163,8 +163,10 @@ called `nowtube-setup`. The six displays will show setup instructions.
 1. On your phone or laptop, connect to the `nowtube-setup` WiFi network
 2. Open a browser and go to `http://192.168.4.1/`
 3. Enter your home WiFi name and password in the WiFi section
-4. Click **Save**
-5. The device will reboot and connect to your home network
+4. Click **Save Settings**
+5. The device confirms the save and restarts automatically to join your home network
+6. If it cannot join within 30 seconds, it returns to `nowtube-setup` with the
+   setup instructions visible again
 
 ### Finding the Device on Your Network
 
@@ -228,6 +230,14 @@ account required.
 | Clock font | Choose Nixie One, Space Mono, Atkinson Hyperlegible, or Aldrich; the device applies the saved choice immediately |
 
 Set any dwell time to **0** to skip that mode entirely in the auto-cycle.
+
+### Panel Mirror
+
+The settings page includes **Open Panel Mirror**. It opens `/panels`, a
+read-only live view of the data sent to each tube in CLOCK, TODAY, and
+FORECAST. It is useful for checking weather values and panel meaning without
+waiting for the physical auto-cycle. The mirror refreshes once per second and
+does not change the device configuration.
 
 ### Connecting Wi-Fi from Recovery Setup
 
@@ -547,7 +557,11 @@ SETUP   JOIN    nowtube-  OPEN A    GO TO:  192.168.
 2. Open a browser and navigate to **`http://192.168.4.1/`**
    (you must type this manually — there is no automatic redirect)
 3. Update your WiFi credentials in the WiFi section and click **Save**
-4. The device will reboot and connect to your home network
+4. The page confirms the save and the device restarts automatically to join
+   your home network. Your phone will briefly lose the setup AP; switch it
+   back to the home network.
+5. If joining fails, wait 30 seconds for `nowtube-setup` and its on-device
+   instructions to return automatically.
 
 ### Cancelling Recovery Mode
 
