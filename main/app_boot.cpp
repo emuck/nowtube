@@ -233,8 +233,8 @@ static void status_handler(char *buffer, size_t buffer_size) {
            "\"ota\":{\"state\":\"%s\",\"progress_pct\":%d},"
            "\"diagnostics\":{\"last_reset_reason\":\"%s\","
            "\"boot_count\":%lu,\"free_heap\":%lu,\"min_free_heap\":%lu}}",
-           snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
-           snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_FIRMWARE_REV,
+           snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_BUILD_VERSION,
+           snap.build.firmware_version != nullptr ? snap.build.firmware_version : NOWTUBE_BUILD_VERSION,
            snap.build.git_sha != nullptr ? snap.build.git_sha : "unknown",
            snap.build.git_dirty ? "true" : "false",
            snap.build.build_time_utc != nullptr ? snap.build.build_time_utc : "",
@@ -278,7 +278,7 @@ ESP_EVENT_DEFINE_BASE(DISPATCH_EVENTS);
 
 void app_boot_run() {
   size_t psram_size = esp_psram_get_size();
-  ESP_LOGI(TAG, "nowtube firmware rev %s", NOWTUBE_FIRMWARE_REV);
+  ESP_LOGI(TAG, "nowtube firmware rev %s", NOWTUBE_BUILD_VERSION);
   ESP_LOGI(TAG, "Starting... PSRAM size: %d bytes", psram_size);
 
   ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -296,7 +296,7 @@ void app_boot_run() {
   diagnostics_service::init();
   config_service::init();
   status_service::init(build_info_snapshot{
-      .firmware_version = NOWTUBE_FIRMWARE_REV,
+      .firmware_version = NOWTUBE_BUILD_VERSION,
       .git_sha = NOWTUBE_BUILD_GIT_SHA,
       .build_time_utc = NOWTUBE_BUILD_TIME_UTC,
       .asset_rev = NOWTUBE_ASSET_REV,
