@@ -115,7 +115,7 @@ clock::clock() {
 
       wifi_status_icon = lv_label_create(screen);
       lv_label_set_text_static(wifi_status_icon, LV_SYMBOL_WIFI);
-      lv_obj_set_style_text_font(wifi_status_icon, &lv_font_montserrat_14, 0);
+      lv_obj_set_style_text_font(wifi_status_icon, &lv_font_montserrat_24, 0);
       lv_obj_set_style_text_color(wifi_status_icon, lv_color_hex(0xD69C58), 0);
       lv_obj_align(wifi_status_icon, LV_ALIGN_CENTER, 26, 0);
     }

@@ -362,10 +362,19 @@ async function boot() {
   setInterval(() => loadStatus().catch(() => {}), 30000);
 
   document.getElementById("config-form").addEventListener("submit", async (event) => {
-    document.getElementById("save-result").textContent = "Saving…";
+    const wifiWillRestart = document.getElementById("wifi-psk").value !== "" ||
+      document.getElementById("wifi-ssid").value !== savedWifiSsid;
+    document.getElementById("save-result").textContent = wifiWillRestart
+      ? "Saving and rebooting… reconnect your phone to home Wi-Fi."
+      : "Saving…";
     try {
       await saveConfig(event);
     } catch (error) {
+      if (wifiWillRestart) {
+        // The setup access point disappearing is the expected success path.
+        // Keep the useful reboot guidance visible instead of showing a false error.
+        return;
+      }
       document.getElementById("save-result").textContent = `Save failed: ${error.message}`;
     }
   });
