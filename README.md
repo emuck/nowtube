@@ -12,7 +12,7 @@ Based on [previoustube](https://github.com/previoustube/previoustube) by Ian Lev
 ## What It Does
 
 - **Clock** — fast static time display with a curated picker: Nixie One, Space Mono, Atkinson Hyperlegible, or Aldrich
-- **TODAY** — 6-panel ambient display: weekday, month/day + weather icon, day number, wind, humidity (or AQI), and next sun event
+- **TODAY** — 6-panel ambient display: weekday, month, day-of-month + weather icon, wind, humidity (or AQI), and next sun event
 - **FORECAST** — 5-day outlook across 6 panels; day codes first, then condition icons revealed mid-dwell via phase timer
 - **Web UI** — browser-based configuration, a live six-panel mirror, and firmware update served directly by the device
 - **OTA Updates** — browser-upload and curl-based OTA; no local HTTP server required after first USB flash
@@ -91,7 +91,7 @@ The following areas have been verified on a real device running current firmware
 |---|---|---|
 | Cold boot, NTP sync, RTC fallback | ✅ Pass | Boot completes cleanly; RTC used before NTP; `last_reset_reason` and `boot_count` accurate |
 | Wi-Fi connect and status reporting | ✅ Pass | `retry_count` increments on failures; `wifi.connected` and `ip` fields accurate |
-| Bad Wi-Fi credentials → recovery fallback | ✅ Pass | Device returns to `nowtube-setup` with on-device instructions after a 30-second connection timeout |
+| Bad Wi-Fi credentials → recovery fallback | ⚠️ Needs final device check | Firmware returns to `nowtube-setup` with on-device instructions after a 30-second connection timeout |
 | Weather fetch success | ✅ Pass | Open-Meteo fetch (no API key), NVS cache, and display update all working |
 | Bad location config → no crash | ✅ Pass | Fetch errors logged; display holds last known value |
 | Auto-cycle CLOCK→TODAY→FORECAST | ✅ Pass | After `lv_async_call` race fix (see Known Issues under Web Configuration); 12-hour soak confirmed |
