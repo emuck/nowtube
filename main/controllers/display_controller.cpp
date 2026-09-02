@@ -188,6 +188,20 @@ DisplayMode current_mode() {
   return ModeManager::get().current();
 }
 
+bool get_conditions_snapshot(current_conditions &out) {
+  conditions_lock();
+  out = s_conditions;
+  conditions_unlock();
+  return out.valid;
+}
+
+bool get_forecast_snapshot(forecast_data &out) {
+  forecast_lock();
+  out = s_forecast;
+  forecast_unlock();
+  return out.valid;
+}
+
 void on_conditions_updated(const current_conditions &data) {
   if (s_recovery_active) return;
 
