@@ -546,11 +546,11 @@ void clock::show_recovery_screen() {
   // exact values without shrinking the text to fit a narrow tube.
   struct panel_t { const char *text; const lv_font_t *font; };
   static const panel_t PANELS[NUM_LCDS] = {
-      {"SETUP",          &lv_font_montserrat_24},
+      {"WIFI\nSETUP",    &lv_font_montserrat_24},
       {"JOIN",           &lv_font_montserrat_24},
       {"now\ntube\n-setup", &lv_font_montserrat_24},
       {"OPEN",           &lv_font_montserrat_24},
-      {"BROWSER",        &lv_font_montserrat_24},
+      {"WEB\nPAGE",      &lv_font_montserrat_24},
       {"192\n.168\n.4.1", &lv_font_montserrat_24},
   };
 
